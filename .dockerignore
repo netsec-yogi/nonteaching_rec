@@ -1,0 +1,22 @@
+# Never send secrets, local state or dependencies into the image build context.
+.env
+.env.*
+!.env.example
+.git
+node_modules
+vendor
+public/build
+public/hot
+storage/app/*
+!storage/app/.gitignore
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/testing/*
+storage/fonts/*
+bootstrap/cache/*.php
+.phpunit.result.cache
+tests
+docs
+*.log

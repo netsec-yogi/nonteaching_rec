@@ -1,0 +1,88 @@
+# Continuous integration: style, backend tests against MySQL, frontend type-check and build,
+# and the production images. Nothing is pushed or deployed from here.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  style:
+    name: Code style (Pint)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: vendor/bin/pint --test
+
+  backend:
+    name: Backend tests (PHPUnit, MySQL 8.4)
+    runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ntrec_test
+          MYSQL_USER: ntrec
+          MYSQL_PASSWORD: secret
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, gd, intl, zip, bcmath, exif
+          tools: composer:v2
+          coverage: none
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          sed -i -e 's/^APP_ENV=.*/APP_ENV=testing/' -e 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' \
+                 -e 's/^DB_USERNAME=.*/DB_USERNAME=ntrec/' -e 's/^DB_PASSWORD=.*/DB_PASSWORD=secret/' \
+                 -e 's/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' -e 's/^CACHE_STORE=.*/CACHE_STORE=array/' .env
+          php artisan key:generate --no-interaction
+      - run: php artisan test
+
+  frontend:
+    name: Frontend (type-check and build)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run type-check
+      - run: npm run build
+
+  images:
+    name: Production images build
+    runs-on: ubuntu-24.04
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f docker/prod/Dockerfile --target app -t ntrec-app:ci .
+      - run: docker build -f docker/prod/Dockerfile --target web -t ntrec-web:ci .
