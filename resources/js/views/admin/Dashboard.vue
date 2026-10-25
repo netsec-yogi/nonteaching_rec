@@ -152,7 +152,7 @@ function openNotification(n: DashboardData['notifications'][number]) {
                             <tbody>
                                 <tr v-for="[k, n] in posts" :key="k">
                                     <td style="width: 45%" class="small">{{ k }}</td>
-                                    <td><div class="progress" style="height: .6rem" :aria-label="k"><div class="progress-bar bg-info" :style="{ width: pct(n, max(posts)) + '%' }"></div></div></td>
+                                    <td><div class="progress" style="height: .6rem" role="progressbar" :aria-valuenow="pct(n, max(posts))" aria-valuemin="0" aria-valuemax="100" :aria-label="k"><div class="progress-bar bg-info" :style="{ width: pct(n, max(posts)) + '%' }"></div></div></td>
                                     <td class="text-end fw-semibold" style="width: 4rem">{{ n }}</td>
                                 </tr>
                                 <tr v-if="!posts.length"><td class="text-muted small">No submitted applications.</td></tr>
@@ -170,7 +170,7 @@ function openNotification(n: DashboardData['notifications'][number]) {
                                 <tbody>
                                     <tr v-for="[d, n] in daily" :key="d">
                                         <td class="small text-nowrap">{{ formatDate(d) }}</td>
-                                        <td style="width: 45%"><div class="progress" style="height: .5rem" :aria-label="d"><div class="progress-bar bg-success" :style="{ width: pct(n, max(daily)) + '%' }"></div></div></td>
+                                        <td style="width: 45%"><div class="progress" style="height: .5rem" role="progressbar" :aria-valuenow="pct(n, max(daily))" aria-valuemin="0" aria-valuemax="100" :aria-label="d"><div class="progress-bar bg-success" :style="{ width: pct(n, max(daily)) + '%' }"></div></div></td>
                                         <td class="text-end fw-semibold">{{ n }}</td>
                                     </tr>
                                     <tr v-if="!daily.length"><td colspan="3" class="text-muted small">No submissions in the last 30 days.</td></tr>

@@ -20,13 +20,13 @@ const canChange = computed(() => app.value.status === 'draft');
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label">2. Advertisement No.</label>
-                        <input class="form-control" :value="form.advertisement_number" readonly>
+                        <label class="form-label" for="post-ad-no">2. Advertisement No.</label>
+                        <input id="post-ad-no" class="form-control" :value="form.advertisement_number" readonly>
                         <div class="form-text">{{ app.advertisement.title }}</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">3. Date of application</label>
-                        <input class="form-control" :value="formatDate(form.application_date)" readonly>
+                        <label class="form-label" for="post-app-date">3. Date of application</label>
+                        <input id="post-app-date" class="form-control" :value="formatDate(form.application_date)" readonly>
                         <div class="form-text">Recorded automatically on final submission.</div>
                     </div>
                     <div class="col-12">

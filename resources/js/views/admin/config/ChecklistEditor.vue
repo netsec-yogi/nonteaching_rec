@@ -134,31 +134,31 @@ async function remove() {
                         <div class="row g-2 align-items-start">
                             <div class="col-auto pt-4 text-muted small fw-semibold">{{ i + 1 }}</div>
                             <div class="col-md-5">
-                                <label class="form-label small mb-0 required">Label</label>
-                                <input v-model="it.label" class="form-control form-control-sm" maxlength="500" :class="{ 'is-invalid': form.errors[`items.${i}.label`] }" @blur="slug(it)">
+                                <label class="form-label small mb-0 required" :for="`ci-label-${i}`">Label</label>
+                                <input :id="`ci-label-${i}`" v-model="it.label" class="form-control form-control-sm" maxlength="500" :class="{ 'is-invalid': form.errors[`items.${i}.label`] }" @blur="slug(it)">
                                 <FieldError :errors="rowErrors(form.errors, `items.${i}.`)" name="label" />
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label small mb-0 required">Code</label>
-                                <input v-model="it.code" class="form-control form-control-sm font-monospace" maxlength="60" :class="{ 'is-invalid': form.errors[`items.${i}.code`] }">
+                                <label class="form-label small mb-0 required" :for="`ci-code-${i}`">Code</label>
+                                <input :id="`ci-code-${i}`" v-model="it.code" class="form-control form-control-sm font-monospace" maxlength="60" :class="{ 'is-invalid': form.errors[`items.${i}.code`] }">
                                 <FieldError :errors="rowErrors(form.errors, `items.${i}.`)" name="code" />
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label small mb-0 required">Section</label>
-                                <select v-model="it.section" class="form-select form-select-sm" :class="{ 'is-invalid': form.errors[`items.${i}.section`] }">
+                                <label class="form-label small mb-0 required" :for="`ci-section-${i}`">Section</label>
+                                <select :id="`ci-section-${i}`" v-model="it.section" class="form-select form-select-sm" :class="{ 'is-invalid': form.errors[`items.${i}.section`] }">
                                     <option v-for="s in sections" :key="s" :value="s">{{ humanize(s) }}</option>
                                 </select>
                                 <FieldError :errors="rowErrors(form.errors, `items.${i}.`)" name="section" />
                             </div>
                             <div class="col">
-                                <label class="form-label small mb-0">Document type</label>
-                                <select v-model="it.document_type_id" class="form-select form-select-sm" :class="{ 'is-invalid': form.errors[`items.${i}.document_type_id`] }">
+                                <label class="form-label small mb-0" :for="`ci-doctype-${i}`">Document type</label>
+                                <select :id="`ci-doctype-${i}`" v-model="it.document_type_id" class="form-select form-select-sm" :class="{ 'is-invalid': form.errors[`items.${i}.document_type_id`] }">
                                     <option :value="null">— None —</option>
                                     <option v-for="t in types" :key="t.id" :value="t.id">{{ t.name }}</option>
                                 </select>
                             </div>
                             <div class="col-md-7 offset-md-0">
-                                <input v-model="it.verification_instructions" class="form-control form-control-sm" maxlength="2000" placeholder="Verification instructions for scrutiny officers (optional)">
+                                <input v-model="it.verification_instructions" :aria-label="`Item ${i + 1} verification instructions`" class="form-control form-control-sm" maxlength="2000" placeholder="Verification instructions for scrutiny officers (optional)">
                                 <FieldError :errors="rowErrors(form.errors, `items.${i}.`)" name="verification_instructions" />
                             </div>
                             <div class="col-md d-flex flex-wrap align-items-center gap-3 small">

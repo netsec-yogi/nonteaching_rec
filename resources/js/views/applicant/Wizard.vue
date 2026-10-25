@@ -299,7 +299,7 @@ async function onMobileStep(e: Event) {
                 <aside class="col-lg-3 d-none d-lg-block">
                     <div class="position-sticky" style="top: 1rem">
                         <div class="small text-muted mb-1 d-flex justify-content-between"><span>Progress</span><span>{{ doneCount }} / {{ applicable.length }} complete</span></div>
-                        <div class="progress mb-3" style="height: 6px" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress mb-3" style="height: 6px" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100" aria-label="Form completed">
                             <div class="progress-bar bg-success" :style="{ width: `${progress}%` }"></div>
                         </div>
                         <div class="list-group wizard-steps">
@@ -334,7 +334,7 @@ async function onMobileStep(e: Event) {
                                 {{ s.issues.length ? '⚠' : s.applicable ? '✓' : '–' }} {{ i + 1 }}. [{{ s.form_reference }}] {{ s.title }}
                             </option>
                         </select>
-                        <div class="progress mt-2" style="height: 6px" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress mt-2" style="height: 6px" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100" aria-label="Form completed">
                             <div class="progress-bar bg-success" :style="{ width: `${progress}%` }"></div>
                         </div>
                     </div>
@@ -361,7 +361,7 @@ async function onMobileStep(e: Event) {
 
                         <div class="sticky-actions mt-3">
                             <div class="d-flex flex-wrap gap-2 align-items-center">
-                                <button v-if="prevStep" type="button" class="btn btn-outline-secondary" @click="go(`/applications/${uuid}/edit/${prevStep.key}`)">
+                                <button v-if="prevStep" type="button" class="btn btn-outline-secondary" aria-label="Back to the previous step" @click="go(`/applications/${uuid}/edit/${prevStep.key}`)">
                                     <i class="bi bi-chevron-left"></i><span class="d-none d-sm-inline ms-1">Back</span>
                                 </button>
                                 <span v-if="dirty" class="small text-warning-emphasis d-none d-md-inline"><i class="bi bi-circle-fill me-1" style="font-size: .5rem"></i>Unsaved changes</span>

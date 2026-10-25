@@ -32,6 +32,7 @@ const applicantMenu: ShellSection[] = [
     </AppShell>
 
     <div v-else class="d-flex flex-column min-vh-100">
+        <a href="#main" class="visually-hidden-focusable position-fixed top-0 start-0 m-2 btn btn-secondary" style="z-index: 1070">Skip to content</a>
         <header class="public-header">
             <div class="container public-header-inner">
                 <router-link to="/" class="public-brand">
@@ -54,7 +55,7 @@ const applicantMenu: ShellSection[] = [
                 </nav>
             </div>
         </header>
-        <main class="flex-grow-1 py-4 animate-fade-up" :key="route.path">
+        <main id="main" tabindex="-1" class="flex-grow-1 py-4 animate-fade-up" :key="route.path">
             <div class="container"><router-view /></div>
         </main>
         <footer class="public-footer py-3">

@@ -1,5 +1,6 @@
-# Continuous integration: style, backend tests against MySQL, frontend type-check and build,
-# and the production images. Nothing is pushed or deployed from here.
+# Continuous integration: style, dependency audits, backend tests against MySQL, frontend
+# type-check and build, an accessibility scan of every screen, and the production images.
+# Nothing is pushed or deployed from here.
 name: CI
 
 on:
@@ -27,6 +28,22 @@ jobs:
           coverage: none
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: vendor/bin/pint --test
+
+  audit:
+    name: Dependency audit (Composer, npm)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - run: composer audit --locked --no-interaction
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm audit --audit-level=moderate
 
   backend:
     name: Backend tests (PHPUnit, MySQL 8.4)
@@ -77,6 +94,61 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run type-check
       - run: npm run build
+
+  accessibility:
+    name: Accessibility (axe, WCAG 2.1 AA)
+    runs-on: ubuntu-24.04
+    needs: [frontend]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ntrec
+          MYSQL_USER: ntrec
+          MYSQL_PASSWORD: secret
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, gd, intl, zip, bcmath, exif
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      # Production settings (so the real Content-Security-Policy applies), served over plain HTTP.
+      - name: Prepare environment and demo data
+        run: |
+          cp .env.example .env
+          sed -i -e 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' -e 's/^DB_USERNAME=.*/DB_USERNAME=ntrec/' -e 's/^DB_PASSWORD=.*/DB_PASSWORD=secret/' \
+                 -e 's#^APP_URL=.*#APP_URL=http://127.0.0.1:8000#' -e 's/^FORCE_HTTPS=.*/FORCE_HTTPS=false/' \
+                 -e 's/^SESSION_SECURE_COOKIE=.*/SESSION_SECURE_COOKIE=false/' -e 's/^SANCTUM_STATEFUL_DOMAINS=.*/SANCTUM_STATEFUL_DOMAINS=127.0.0.1:8000/' \
+                 -e 's/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' -e 's/^CACHE_STORE=.*/CACHE_STORE=database/' -e 's/^MAIL_MAILER=.*/MAIL_MAILER=log/' .env
+          php artisan key:generate --no-interaction
+          php artisan migrate --seed --force --no-interaction
+          php artisan db:seed --class=DemoSeeder --force --no-interaction
+      - name: Scan every screen
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 > storage/logs/serve.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/up > /dev/null && break; sleep 1; done
+          A11Y_BASE=http://127.0.0.1:8000 CHROME=$(command -v google-chrome) A11Y_JSON=a11y-report.json npm run a11y
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report
+          path: |
+            a11y-report.json
+            storage/logs/*.log
 
   images:
     name: Production images build

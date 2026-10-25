@@ -161,7 +161,7 @@ const tabs = computed(() => [
                         <span v-if="notVerified" class="text-danger"><i class="bi bi-x-circle"></i> {{ notVerified }} not verified</span>
                         <span class="ms-auto text-muted">Fee <StatusBadge :value="app.fee_status" /> · Documents <StatusBadge :value="app.document_status" /> · Referees <StatusBadge :value="app.referee_status" /></span>
                     </div>
-                    <div class="progress mt-2" style="height: 6px" role="progressbar" :aria-valuenow="progressPct" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress mt-2" style="height: 6px" role="progressbar" :aria-valuenow="progressPct" aria-valuemin="0" aria-valuemax="100" aria-label="Checklist completed">
                         <div class="progress-bar" :class="pendingMandatory ? 'bg-warning' : 'bg-success'" :style="{ width: progressPct + '%' }"></div>
                     </div>
                 </div>
@@ -196,7 +196,7 @@ const tabs = computed(() => [
                 <div class="col-xl-6">
                     <div class="ws-right">
                         <ul class="nav nav-tabs small flex-nowrap overflow-auto mb-2" role="tablist">
-                            <li v-for="t in tabs" :key="t.key" class="nav-item">
+                            <li v-for="t in tabs" :key="t.key" class="nav-item" role="presentation">
                                 <button type="button" class="nav-link text-nowrap" :class="{ active: tab === t.key }" role="tab" :aria-selected="tab === t.key" @click="tab = t.key">
                                     <i class="bi me-1" :class="t.icon"></i>{{ t.label }}
                                 </button>

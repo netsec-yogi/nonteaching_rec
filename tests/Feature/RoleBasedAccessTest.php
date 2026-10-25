@@ -74,6 +74,27 @@ class RoleBasedAccessTest extends TestCase
         $this->getJson("/api/admin/applications/{$this->application->uuid}")->assertForbidden();
     }
 
+    public function test_advertisement_configuration_is_limited_to_its_administrators(): void
+    {
+        $role = Role::where('slug', 'recruitment_admin')->first();
+        $perms = $role->permissions()->pluck('slug')->push('advertisements.manage')->all();
+        $this->actingAs($this->super)->putJson("/api/admin/roles/{$role->id}/permissions", ['permissions' => $perms])->assertOk();
+
+        $ad = $this->ad->id;
+        $this->actingAs($this->admin->fresh());
+        $this->getJson("/api/admin/advertisements/{$ad}/requirements")->assertOk();
+        $this->getJson("/api/admin/advertisements/{$ad}/stages")->assertOk();
+
+        $this->ad->administrators()->detach($this->admin->id);
+        $this->getJson("/api/admin/advertisements/{$ad}/requirements")->assertForbidden();
+        $this->postJson("/api/admin/advertisements/{$ad}/requirements", [])->assertForbidden();
+        $this->getJson("/api/admin/advertisements/{$ad}/stages")->assertForbidden();
+        $this->putJson("/api/admin/advertisements/{$ad}/stages", ['stages' => []])->assertForbidden();
+        $this->postJson("/api/admin/advertisements/{$ad}/posts", [])->assertForbidden();
+        // Routes in the group without an advertisement are unaffected.
+        $this->getJson('/api/admin/cycles')->assertOk();
+    }
+
     public function test_permissions_are_configurable_per_role(): void
     {
         $this->actingAs($this->admin)->getJson('/api/admin/reports/consolidated')->assertOk();

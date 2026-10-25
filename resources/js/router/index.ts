@@ -100,9 +100,20 @@ router.beforeEach((to) => {
     return true;
 });
 
-router.afterEach((to) => {
+router.afterEach((to, from) => {
     const title = to.meta.title;
     document.title = (title ? `${title} — ` : '') + 'Non-Teaching Recruitment — ABV-IIITM Gwalior';
+
+    // In a single-page app the browser does not reset focus on navigation, so screen reader and
+    // keyboard users would stay on the link they used. Move focus to the new page's content
+    // (not on first load, and not when only the query string changes, e.g. filters).
+    if (from.matched.length && to.path !== from.path) {
+        setTimeout(() => {
+            const main = document.getElementById('main');
+            // Leave focus alone if the new page already placed it (e.g. an autofocus field).
+            if (main && !main.contains(document.activeElement)) main.focus({ preventScroll: true });
+        });
+    }
 });
 
 export default router;

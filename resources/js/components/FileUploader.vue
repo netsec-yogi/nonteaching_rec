@@ -103,7 +103,7 @@ function view(doc: DocumentSummary) {
                 </label>
             </div>
         </div>
-        <div v-if="progress !== null" class="progress mt-2" style="height: 6px" role="progressbar" :aria-valuenow="progress">
+        <div v-if="progress !== null" class="progress mt-2" style="height: 6px" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress">
             <div class="progress-bar" :style="{ width: `${progress}%` }"></div>
         </div>
         <div v-if="error" class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>

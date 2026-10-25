@@ -35,8 +35,8 @@ function add(key = '') { rows.value.push({ key, amount: 0 }); }
         <template v-if="!optional || enabled">
             <div class="row g-2 align-items-end mb-2">
                 <div class="col-sm-4">
-                    <label class="form-label small mb-1 required">Default fee (₹)</label>
-                    <input v-model="amount" type="number" min="0" step="1" class="form-control form-control-sm" :class="{ 'is-invalid': err('default') }">
+                    <label class="form-label small mb-1 required" :for="`fee-default-${prefix}`">Default fee (₹)</label>
+                    <input :id="`fee-default-${prefix}`" v-model="amount" type="number" min="0" step="1" class="form-control form-control-sm" :class="{ 'is-invalid': err('default') }">
                     <div v-if="err('default')" class="invalid-feedback">{{ err('default') }}</div>
                 </div>
                 <div class="col-sm-8 small text-muted">Applies to every candidate unless an exemption below matches their category, gender, disability or ex-serviceman status. The lowest matching amount is charged.</div>
@@ -45,9 +45,9 @@ function add(key = '') { rows.value.push({ key, amount: 0 }); }
                 <thead class="table-light"><tr><th style="width: 45%">Category / condition</th><th>Amount payable (₹)</th><th></th></tr></thead>
                 <tbody>
                     <tr v-for="(r, i) in rows" :key="i">
-                        <td><input v-model="r.key" class="form-control form-control-sm text-uppercase" maxlength="20" placeholder="e.g. SC" list="fee-categories"></td>
+                        <td><input v-model="r.key" aria-label="Category or condition" class="form-control form-control-sm text-uppercase" maxlength="20" placeholder="e.g. SC" list="fee-categories"></td>
                         <td>
-                            <input v-model="r.amount" type="number" min="0" class="form-control form-control-sm" :class="{ 'is-invalid': err(`exemptions.${r.key}`) }">
+                            <input v-model="r.amount" :aria-label="`Amount payable for ${r.key || 'this category'} (₹)`" type="number" min="0" class="form-control form-control-sm" :class="{ 'is-invalid': err(`exemptions.${r.key}`) }">
                         </td>
                         <td class="text-end"><button type="button" class="btn btn-sm btn-link text-danger" @click="rows.splice(i, 1)"><i class="bi bi-x-lg"></i><span class="visually-hidden">Remove</span></button></td>
                     </tr>

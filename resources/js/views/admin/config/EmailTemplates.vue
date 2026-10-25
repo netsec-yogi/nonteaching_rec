@@ -92,7 +92,7 @@ const match = (t: Template) => !q.value || `${t.name} ${t.key}`.toLowerCase().in
                     <div class="list-group small">
                         <button v-for="t in templates.filter(match)" :key="t.id" type="button" class="list-group-item list-group-item-action" :class="{ active: current?.id === t.id }" @click="select(t)">
                             <div class="fw-semibold">{{ t.name }}</div>
-                            <div :class="current?.id === t.id ? 'text-white-50' : 'text-muted'"><code :class="current?.id === t.id ? 'text-white-50' : ''">{{ t.key }}</code><span v-if="!t.is_active"> · inactive</span></div>
+                            <div class="text-muted"><code>{{ t.key }}</code><span v-if="!t.is_active"> · inactive</span></div>
                         </button>
                     </div>
                 </div>

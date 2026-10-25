@@ -9,6 +9,7 @@ const wide = computed(() => route.path === '/register');
 
 <template>
     <div class="guest">
+        <a href="#main" class="visually-hidden-focusable position-fixed top-0 start-0 m-2 btn btn-secondary" style="z-index: 1070">Skip to content</a>
         <section class="guest-panel">
             <router-link to="/" class="d-flex align-items-center gap-3 text-white text-decoration-none">
                 <span class="guest-mark"><img src="/images/institute-logo.svg" alt=""></span>
@@ -28,7 +29,7 @@ const wide = computed(() => route.path === '/register');
             <p class="small mb-0" style="color: rgb(255 255 255 / .5)">Atal Bihari Vajpayee Indian Institute of Information Technology and Management, Gwalior</p>
             <div class="guest-glow" aria-hidden="true"></div>
         </section>
-        <section class="guest-form" :class="{ 'guest-form-wide': wide }">
+        <main id="main" tabindex="-1" class="guest-form" :class="{ 'guest-form-wide': wide }">
             <div class="guest-form-inner animate-fade-up">
                 <router-link to="/" class="d-flex d-lg-none align-items-center gap-2 mb-4 text-decoration-none">
                     <span class="guest-mark" style="background: var(--deep-900)"><img src="/images/institute-logo.svg" alt="" style="background: #fff; border-radius: .3rem"></span>
@@ -40,6 +41,6 @@ const wide = computed(() => route.path === '/register');
                 <router-view />
                 <p class="mt-4 mb-0 text-center small"><router-link to="/" class="text-muted"><i class="bi bi-arrow-left me-1"></i>Back to advertisements</router-link></p>
             </div>
-        </section>
+        </main>
     </div>
 </template>

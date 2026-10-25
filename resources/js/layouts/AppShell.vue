@@ -80,7 +80,7 @@ async function logout() {
                         <span class="shell-brand-sub d-block text-truncate">ABV-IIITM Gwalior</span>
                     </span>
                 </router-link>
-                <button type="button" class="btn btn-link ms-auto p-1 text-white-50 d-lg-none" aria-label="Close menu" @click="drawer = false"><i class="bi bi-x-lg"></i></button>
+                <button type="button" class="btn btn-ghost ms-auto p-1 d-lg-none" aria-label="Close menu" @click="drawer = false"><i class="bi bi-x-lg"></i></button>
             </div>
             <nav class="shell-nav">
                 <div v-for="section in sections" :key="section.title ?? 'main'" class="shell-nav-group">
@@ -151,7 +151,7 @@ async function logout() {
                     </div>
                 </div>
             </header>
-            <main id="main" :key="route.path" class="shell-main animate-fade-up" :class="{ 'shell-main-narrow': narrow }">
+            <main id="main" tabindex="-1" :key="route.path" class="shell-main animate-fade-up" :class="{ 'shell-main-narrow': narrow }">
                 <slot />
             </main>
         </div>

@@ -108,7 +108,7 @@ const optErr = computed(() => Object.entries(form.errors).filter(([k]) => k.star
                     <div class="list-group">
                         <button v-for="t in templates" :key="t.id" type="button" class="list-group-item list-group-item-action" :class="{ active: selected === t.id }" @click="select(t)">
                             <div class="fw-semibold small">{{ t.name }}</div>
-                            <div class="small" :class="selected === t.id ? 'text-white-50' : 'text-muted'">{{ (t.questions ?? t.fields ?? []).length }} questions{{ t.is_active ? '' : ' · inactive' }}</div>
+                            <div class="small text-muted">{{ (t.questions ?? t.fields ?? []).length }} questions{{ t.is_active ? '' : ' · inactive' }}</div>
                         </button>
                         <div v-if="selected === 'new'" class="list-group-item active small fw-semibold">New form</div>
                     </div>
@@ -143,7 +143,7 @@ const optErr = computed(() => Object.entries(form.errors).filter(([k]) => k.star
                                     <div v-for="(o, i) in options" :key="i" class="col-md-6">
                                         <div class="input-group input-group-sm">
                                             <span class="input-group-text">{{ i + 1 }}</span>
-                                            <input v-model="options[i]" class="form-control" maxlength="100" :class="{ 'is-invalid': form.errors[`recommendation_options.${i}`] }">
+                                            <input v-model="options[i]" :aria-label="`Recommendation option ${i + 1}`" class="form-control" maxlength="100" :class="{ 'is-invalid': form.errors[`recommendation_options.${i}`] }">
                                             <button type="button" class="btn btn-outline-secondary" :disabled="i === 0" title="Move up" @click="move(options, i, -1)"><i class="bi bi-arrow-up"></i></button>
                                             <button type="button" class="btn btn-outline-danger" :disabled="options.length <= 2" title="Remove" @click="options.splice(i, 1)"><i class="bi bi-x"></i></button>
                                         </div>

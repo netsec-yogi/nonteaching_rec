@@ -189,25 +189,25 @@ async function save() {
         <div v-for="(c, i) in criteria" :key="i" class="border rounded p-2 mb-2 bg-light">
             <div class="row g-2 align-items-start">
                 <div class="col-md-3">
-                    <label class="form-label small mb-0">Type</label>
-                    <select v-model="c.type" class="form-select form-select-sm" :class="{ 'is-invalid': e[`criteria.${i}.type`] }">
+                    <label class="form-label small mb-0" :for="`crit-type-${i}`">Type</label>
+                    <select :id="`crit-type-${i}`" v-model="c.type" class="form-select form-select-sm" :class="{ 'is-invalid': e[`criteria.${i}.type`] }">
                         <option v-for="(label, key) in CRITERION_TYPES" :key="key" :value="key">{{ label }}</option>
                     </select>
                     <FieldError :errors="rowErrors(e, `criteria.${i}.`)" name="type" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label small mb-0 required">Label</label>
-                    <input v-model="c.label" class="form-control form-control-sm" maxlength="300" :class="{ 'is-invalid': e[`criteria.${i}.label`] }">
+                    <label class="form-label small mb-0 required" :for="`crit-label-${i}`">Label</label>
+                    <input :id="`crit-label-${i}`" v-model="c.label" class="form-control form-control-sm" maxlength="300" :class="{ 'is-invalid': e[`criteria.${i}.label`] }">
                     <FieldError :errors="rowErrors(e, `criteria.${i}.`)" name="label" />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small mb-0">Value</label>
-                    <input v-model="c.value" class="form-control form-control-sm" maxlength="100" :placeholder="valueHint[c.type]" :class="{ 'is-invalid': e[`criteria.${i}.value`] }">
+                    <label class="form-label small mb-0" :for="`crit-value-${i}`">Value</label>
+                    <input :id="`crit-value-${i}`" v-model="c.value" class="form-control form-control-sm" maxlength="100" :placeholder="valueHint[c.type]" :class="{ 'is-invalid': e[`criteria.${i}.value`] }">
                     <FieldError :errors="rowErrors(e, `criteria.${i}.`)" name="value" />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small mb-0">Qualification level</label>
-                    <select v-model="c.qualification_level" class="form-select form-select-sm" :class="{ 'is-invalid': e[`criteria.${i}.qualification_level`] }">
+                    <label class="form-label small mb-0" :for="`crit-level-${i}`">Qualification level</label>
+                    <select :id="`crit-level-${i}`" v-model="c.qualification_level" class="form-select form-select-sm" :class="{ 'is-invalid': e[`criteria.${i}.qualification_level`] }">
                         <option :value="null">— Any —</option>
                         <option v-for="(label, key) in QUALIFICATION_LEVELS" :key="key" :value="key">{{ label }}</option>
                     </select>

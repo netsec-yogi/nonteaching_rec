@@ -8,12 +8,14 @@ import router from './router';
 import { useAuth } from './stores/auth';
 import { installSessionHandling } from './api/session';
 import { installTableCards } from './utils/tableCards';
+import { installScrollRegions } from './utils/scrollRegions';
 import './utils/theme';
 
 const app = createApp(App);
 app.use(createPinia());
 installSessionHandling(router);
 installTableCards();
+installScrollRegions();
 
 useAuth()
     .load()

@@ -132,7 +132,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('advertisements', [Admin\AdvertisementController::class, 'index']);
         Route::get('advertisements/{advertisement}', [Admin\AdvertisementController::class, 'show']);
         Route::get('advertisements/{advertisement}/documents/{document}', [Admin\AdvertisementController::class, 'downloadDocument']);
-        Route::middleware('permission:advertisements.manage')->group(function () {
+        Route::middleware(['permission:advertisements.manage', 'manages-advertisement'])->group(function () {
             Route::post('advertisements', [Admin\AdvertisementController::class, 'store']);
             Route::put('advertisements/{advertisement}', [Admin\AdvertisementController::class, 'update']);
             Route::delete('advertisements/{advertisement}', [Admin\AdvertisementController::class, 'destroy']);

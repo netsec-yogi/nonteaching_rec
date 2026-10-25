@@ -192,7 +192,7 @@ const auditActor = (a: AuditEntry) => a.user?.name ?? a.actor_label ?? humanize(
             <div v-if="app.status === 'withdrawn'" class="alert alert-dark small">Withdrawn by the candidate<span v-if="app.withdrawal_reason">: {{ app.withdrawal_reason }}</span></div>
 
             <ul class="nav nav-tabs mb-3 flex-nowrap overflow-auto" role="tablist">
-                <li v-for="t in tabs" :key="t.key" class="nav-item">
+                <li v-for="t in tabs" :key="t.key" class="nav-item" role="presentation">
                     <button class="nav-link text-nowrap" :class="{ active: tab === t.key }" role="tab" :aria-selected="tab === t.key" @click="setTab(t.key)">
                         <i class="bi me-1" :class="`bi-${t.icon}`"></i>{{ t.label }}
                     </button>
