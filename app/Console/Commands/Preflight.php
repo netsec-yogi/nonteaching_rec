@@ -43,6 +43,11 @@ class Preflight extends Command
             $check('APP_DEBUG=false', ! config('app.debug'));
             $check('APP_URL uses https', str_starts_with(config('app.url'), 'https://'));
             $check('Secure session cookie', (bool) config('session.secure'), 'SESSION_SECURE_COOKIE=true');
+            $host = parse_url(config('app.url'), PHP_URL_HOST);
+            $port = parse_url(config('app.url'), PHP_URL_PORT);
+            $stateful = array_map('trim', config('sanctum.stateful', []));
+            $check('APP_URL host is a Sanctum stateful domain', in_array($port ? "$host:$port" : $host, $stateful, true),
+                'add '.($port ? "$host:$port" : $host).' to SANCTUM_STATEFUL_DOMAINS (sign-in fails otherwise)');
             $check('Mail is not the log driver', ! in_array(config('mail.default'), ['log', 'array'], true));
             $check('No demo accounts active', ! User::where('email', 'like', '%@example.com')->orWhere('email', 'superadmin@iiitm.ac.in')->where('is_active', true)->exists(), 'deactivate seeded demo users');
             $check('Backup directory configured', is_dir(config('recruitment.backup.path')) || @mkdir(config('recruitment.backup.path'), 0700, true));

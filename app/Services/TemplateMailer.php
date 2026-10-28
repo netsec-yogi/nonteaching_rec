@@ -85,7 +85,9 @@ class TemplateMailer
     {
         return preg_replace_callback('/\{\{\s*([a-z0-9_]+)\s*\}\}/i', function ($m) use ($vars, $forMarkdown) {
             $value = (string) ($vars[$m[1]] ?? '');
-            if (! $forMarkdown || str_starts_with($value, 'https://') || str_starts_with($value, 'http://')) {
+            // Only placeholders that carry links by name (url, …_url, …_link) are inserted raw; a
+            // user-supplied value such as a referee's name is always escaped, even if it looks like a URL.
+            if (! $forMarkdown || preg_match('/^(url|.*_(url|link))$/i', $m[1])) {
                 return $value;
             }
 

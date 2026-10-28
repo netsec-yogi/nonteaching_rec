@@ -10,6 +10,7 @@ use App\Models\RefereeInvitation;
 use App\Models\User;
 use Database\Seeders\DemoData;
 use Database\Seeders\SampleFiles;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -119,6 +120,41 @@ class ApplicantWorkflowTest extends TestCase
         $this->assertTrue($invitations->every(fn ($i) => $i->delivery_status === 'sent'));
     }
 
+    public function test_each_qualification_and_employment_row_needs_its_own_certificate(): void
+    {
+        $application = $this->completedDraft();
+        $this->actingAs($application->user);
+        $this->postJson("/api/applications/{$application->uuid}/submit", ['confirm' => true])->assertOk();
+
+        $application = $this->completedDraft($this->applicant('second@example.com'));
+        $this->actingAs($application->user);
+        // Remove the certificate attached to one qualification row; another row's certificate must not cover it.
+        $doc = $application->documents()->where('documentable_type', 'qualification')->first();
+        $this->assertNotNull($doc);
+        $this->deleteJson("/api/applications/{$application->uuid}/documents/{$doc->uuid}")->assertOk();
+
+        $payload = $this->getJson("/api/applications/{$application->uuid}")->assertOk()->json();
+        $issues = collect($payload['steps'])->firstWhere('key', 'qualifications')['issues'];
+        $this->assertStringContainsString('for every entry', implode(' ', $issues));
+        $this->postJson("/api/applications/{$application->uuid}/submit", ['confirm' => true])->assertUnprocessable()->assertJsonValidationErrors('application');
+    }
+
+    public function test_endorsement_must_be_complete_when_mandatory(): void
+    {
+        $application = $this->completedDraft();
+        $this->ad->update(['endorsement_mode' => 'required_for_in_service']);
+        $application->forceFill(['is_in_service' => true])->save();
+        $this->assertNotNull($application->endorsement, 'demo data should include an endorsement');
+        // Saved while optional, one certification left unticked: submission must still refuse it.
+        DB::table('employer_endorsements')->where('application_id', $application->id)->update(['no_disciplinary_case_certified' => false]);
+
+        $this->actingAs($application->user);
+        $payload = $this->getJson("/api/applications/{$application->uuid}")->assertOk()->json();
+        $issues = collect($payload['steps'])->firstWhere('key', 'endorsement')['issues'];
+        $this->assertNotEmpty($issues);
+        $this->postJson("/api/applications/{$application->uuid}/submit", ['confirm' => true])->assertUnprocessable();
+    }
+
     public function test_submitted_application_is_locked_against_editing(): void
     {
         $application = $this->submitted();
@@ -208,5 +244,33 @@ class ApplicantWorkflowTest extends TestCase
 
         $this->assertSame(Application::WITHDRAWN, $application->fresh()->status);
         $this->assertSame(0, RefereeInvitation::where('application_id', $application->id)->where('state', 'active')->count());
+        // Revocations go through the referee service: attributed, audited, status recomputed.
+        $this->assertSame(3, RefereeInvitation::where('application_id', $application->id)->where('state', 'revoked')->whereNotNull('revoked_by')->count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'application.withdrawn', 'application_id' => $application->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'referee.invitation_revoked', 'application_id' => $application->id]);
+    }
+
+    public function test_reopening_restricts_uploads_to_the_opened_sections(): void
+    {
+        $application = $this->submitted();
+        $this->actingAs($this->super)->postJson("/api/admin/applications/{$application->uuid}/reopen", ['reason' => 'Photograph unclear', 'sections' => ['personal']])->assertOk();
+
+        $this->actingAs($application->user);
+        $url = "/api/applications/{$application->uuid}/documents";
+        $this->post($url, ['file' => SampleFiles::pdf(), 'document_type' => 'qualification_certificate'])->assertForbidden();
+        $this->post($url, ['file' => SampleFiles::png(), 'document_type' => 'photo'])->assertCreated();
+        // A frozen (submitted) document is never deleted, even on an opened section; one on a closed section is refused outright.
+        $frozenPhoto = $application->documents()->where('is_frozen', true)->whereHas('documentType', fn ($q) => $q->where('step', 'personal'))->first();
+        $this->deleteJson("$url/{$frozenPhoto->uuid}")->assertUnprocessable();
+        $frozenOther = $application->documents()->where('is_frozen', true)->whereHas('documentType', fn ($q) => $q->where('step', 'qualifications'))->first();
+        $this->deleteJson("$url/{$frozenOther->uuid}")->assertForbidden();
+    }
+
+    public function test_password_reset_failures_do_not_reveal_whether_an_account_exists(): void
+    {
+        $body = ['token' => 'wrong', 'password' => 'Str0ng!Passw0rd', 'password_confirmation' => 'Str0ng!Passw0rd'];
+        $unknown = $this->postJson('/api/auth/reset-password', $body + ['email' => 'nobody@example.com'])->assertUnprocessable()->json('errors.email.0');
+        $known = $this->postJson('/api/auth/reset-password', $body + ['email' => $this->applicant('known@example.com')->email])->assertUnprocessable()->json('errors.email.0');
+        $this->assertSame($unknown, $known);
     }
 }

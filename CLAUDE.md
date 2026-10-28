@@ -16,6 +16,10 @@ npm run type-check && npm run build
 
 ## Ground rules
 
+- **Eloquent is strict outside production** (`AppServiceProvider`): lazy loading a relation or
+  filling a non-fillable attribute throws. Eager-load with `with()`/`loadMissing()`; tests and the
+  dev stack will tell you where you forgot.
+
 - **Nothing recruitment-specific is hard-coded.** If you are about to write a post name, fee,
   date, document rule or checklist item into code, it belongs in configuration data.
 - **The form is data.** A wizard step is a class in `app/Services/ApplicationForm/Sections/`
@@ -38,6 +42,21 @@ standard Bootstrap markup (`card`, `table`, `btn-primary` / `btn-outline-seconda
 `form-label`, `StatusBadge`), `page-title` + `page-subtitle` headings, `StatCard` for KPIs,
 `table-cards` on list tables. Don't add hard-coded colours: use the CSS variables in `app.scss`
 (`var(--surface)`, `var(--ink)`, `var(--danger-fg)`…) so both light and dark modes work.
+
+Browser checks (both need `./dev.sh start` with demo data; the screens are listed once in
+`tests/e2e/pages.cjs`): `node tests/e2e/smoke.cjs` opens every screen as every role and fails on JS
+errors, 5xx/unexpected 4xx, blank or error states and leaked placeholders, and presses "Save and
+continue" on every wizard step. `npm run a11y` runs the WCAG scan below.
+
+Accessibility (WCAG 2.1 AA, as GIGW requires) is checked in CI by `npm run a11y`
+(`tests/a11y/axe.cjs`: every screen, every role, both themes, desktop and phone). Keep it green:
+- Every control has a label linked by `for`/`id` (use the row index in repeated rows), or an
+  `aria-label` when there is no visible label. Icon-only buttons need `aria-label` or `title`.
+- Text colours: `--muted` for small/secondary text, `--brand-fg` for brand-coloured text.
+  `--subtle` and `--brand-solid` are for icons, borders and fills, not text.
+- Tabs: `role="tablist"` on the `<ul>`, `role="presentation"` on each `<li>`.
+- Each layout has a skip link and `<main id="main" tabindex="-1">`; the router focuses it on
+  navigation.
 
 ## Production
 

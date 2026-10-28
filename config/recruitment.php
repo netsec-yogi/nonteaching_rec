@@ -5,6 +5,8 @@ return [
     'categories' => ['UR' => 'UR (Unreserved)', 'SC' => 'SC', 'ST' => 'ST', 'OBC' => 'OBC (Non-Creamy Layer)', 'EWS' => 'EWS'],
     'genders' => ['male' => 'Male', 'female' => 'Female', 'transgender' => 'Transgender'],
     'marital_statuses' => ['married' => 'Married', 'unmarried' => 'Unmarried'],
+    // Item 32 addresses the applicant as Dr/Mr/Mrs/Ms.
+    'salutations' => ['Dr', 'Mr', 'Mrs', 'Ms'],
 
     // Disk for applicant uploads and generated PDFs. Must never be publicly served.
     'documents_disk' => env('RECRUITMENT_DOCUMENTS_DISK', 'private'),

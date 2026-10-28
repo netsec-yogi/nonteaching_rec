@@ -205,12 +205,18 @@ class SubmissionService
             throw ValidationException::withMessages(['application' => 'This application can no longer be withdrawn online. Contact the Recruitment Section.']);
         }
 
-        DB::transaction(function () use ($application, $reason) {
+        DB::transaction(function () use ($application, $user, $reason) {
+            $application = Application::lockForUpdate()->findOrFail($application->id);
+            if ($application->status === Application::WITHDRAWN) {
+                return;
+            }
             $application->forceFill(['withdrawn_at' => now(), 'withdrawal_reason' => $reason])->save();
             $this->status->set($application, 'status', Application::WITHDRAWN, $reason);
-            $application->refereeInvitations()->where('state', 'active')->update([
-                'state' => 'revoked', 'revoked_at' => now(), 'revocation_reason' => 'Application withdrawn', 'token_encrypted' => null,
-            ]);
+            $this->audit->record('application.withdrawn', $application, [], [], ['reason' => $reason], application: $application, user: $user);
+            // Each pending referee link is revoked through the service so it is audited and the referee status recomputed.
+            foreach ($application->refereeInvitations()->where('state', 'active')->get() as $invitation) {
+                $this->referees->revoke($invitation, $user, 'Application withdrawn by the candidate.');
+            }
         });
     }
 }

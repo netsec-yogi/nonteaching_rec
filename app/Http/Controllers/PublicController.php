@@ -33,6 +33,7 @@ class PublicController extends Controller
     {
         abort_unless(in_array($advertisement->status, [Advertisement::PUBLISHED, Advertisement::CLOSED], true), 404);
         $advertisement->load(['posts.vacancies', 'posts.eligibilityCriteria', 'documents' => fn ($q) => $q->where('is_public', true), 'cycle']);
+        $advertisement->posts->each->setRelation('advertisement', $advertisement); // effectiveFeeSchedule() reads it
 
         return response()->json([
             ...$this->summary($advertisement),

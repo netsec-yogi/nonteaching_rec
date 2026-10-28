@@ -43,8 +43,8 @@ class SendTemplatedEmail implements ShouldBeEncrypted, ShouldQueue
     public function handle(): void
     {
         $log = EmailLog::find($this->emailLogId);
-        if (! $log) {
-            return;
+        if (! $log || $log->status === 'sent') {
+            return; // already delivered: a retry after a failed status update must not resend
         }
 
         $log->increment('attempts');

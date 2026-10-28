@@ -64,7 +64,7 @@ class PdfService
             return $version;
         }
         $snapshot = $version->snapshot;
-        $binary = $this->render('pdf.application', ['s' => $snapshot, 'version' => $version]);
+        $binary = $this->render('pdf.application', ['s' => $snapshot, 'version' => $version, 'photo' => $this->photoDataUri($version->application)]);
         $path = 'applications/'.$snapshot['meta']['uuid'].'/application-v'.$version->version.'.pdf';
         Storage::disk($this->disk())->put($path, $binary);
 
@@ -76,7 +76,20 @@ class PdfService
     /** A draft preview straight from a snapshot array, never stored. */
     public function applicationPreview(array $snapshot): string
     {
-        return $this->render('pdf.application', ['s' => $snapshot, 'version' => null, 'draft' => true]);
+        $application = Application::where('uuid', $snapshot['meta']['uuid'] ?? null)->first();
+
+        return $this->render('pdf.application', ['s' => $snapshot, 'version' => null, 'draft' => true, 'photo' => $this->photoDataUri($application)]);
+    }
+
+    /** The candidate's photograph as a data URI (dompdf runs with remote access off), or null. */
+    private function photoDataUri(?Application $application): ?string
+    {
+        $photo = $application?->documents()->whereHas('documentType', fn ($q) => $q->where('code', 'photo'))->latest('id')->first();
+        if (! $photo || ! Storage::disk($photo->disk)->exists($photo->path)) {
+            return null;
+        }
+
+        return 'data:'.$photo->mime.';base64,'.base64_encode(Storage::disk($photo->disk)->get($photo->path));
     }
 
     public function acknowledgment(Application $application): string

@@ -103,6 +103,7 @@ export interface Address {
 }
 
 export interface PersonalData {
+    salutation: string | null;
     full_name: string | null;
     relation_type: 'father' | 'husband' | null;
     relation_name: string | null;

@@ -61,6 +61,7 @@ class SnapshotBuilder
                 'department' => $a->post->department,
             ],
             'personal' => [
+                'salutation' => $p?->salutation,
                 'full_name' => $p?->full_name,
                 'relation_label' => $p?->relation_type === 'husband' ? "Husband's Name" : "Father's Name",
                 'relation_name' => $p?->relation_name,

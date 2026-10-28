@@ -186,6 +186,7 @@ class ApplicationFormService
                 'categories' => config('recruitment.categories'),
                 'genders' => config('recruitment.genders'),
                 'marital_statuses' => config('recruitment.marital_statuses'),
+                'salutations' => config('recruitment.salutations'),
                 'qualification_levels' => Qualification::LEVELS,
                 'employment_types' => Employment::TYPES,
                 'training_types' => Training::TYPES,

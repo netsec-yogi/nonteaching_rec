@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\AuditLog;
 use App\Models\RefereeInvitation;
 use App\Models\RefereeResponse;
 use App\Services\RefereeService;
@@ -31,7 +32,7 @@ class RefereeWorkflowTest extends TestCase
 
     public function test_exactly_three_independent_invitations_with_hashed_tokens(): void
     {
-        $invitations = RefereeInvitation::where('application_id', $this->application->id)->get();
+        $invitations = RefereeInvitation::with('referee')->where('application_id', $this->application->id)->get();
         $this->assertCount(3, $invitations);
         $this->assertSame([1, 2, 3], $invitations->map(fn ($i) => $i->referee->position)->sort()->values()->all());
 
@@ -225,6 +226,14 @@ class RefereeWorkflowTest extends TestCase
 
         $this->assertSame('Registrar', $response->fresh()->referee_designation);
         $this->assertDatabaseHas('referee_response_amendments', ['referee_response_id' => $response->id, 'original_value' => 'Registrar', 'amended_value' => 'Registrar (Officiating)']);
+
+        // Amending the recommendation itself never copies its content into the audit log (readable with audit.view alone).
+        $this->postJson("/api/admin/applications/{$this->application->uuid}/recommendations/{$response->id}/amend", [
+            'field' => 'comments', 'amended_value' => 'Outstanding candidate, strongly recommended.', 'reason' => 'Referee sent a corrected letter',
+        ])->assertCreated();
+        $audit = AuditLog::where('action', 'referee.recommendation_amended')->latest('id')->first();
+        $this->assertStringNotContainsString('candidate', json_encode([$audit->old_values, $audit->new_values, $audit->meta]));
+        $this->assertSame('comments', $audit->meta['field']);
     }
 
     public function test_reminders_follow_the_configured_schedule(): void

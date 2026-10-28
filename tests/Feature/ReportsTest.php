@@ -33,6 +33,11 @@ class ReportsTest extends TestCase
         $csv = $this->get('/api/admin/reports/consolidated/export/csv')->assertOk();
         $this->assertStringContainsString('IIITM/NT/26-03/00001', $csv->streamedContent());
         $this->assertStringContainsString('Referee 3 recommendation status', $csv->streamedContent());
+        // Every section of the paper form reaches the consolidated export.
+        foreach (['Issuing bank', 'Qualification 1 subjects', 'Employment 1 nature of duties', 'Sec 26(a) arrested / prosecuted / debarred — details',
+            'Sec 24 suitability statement', 'Referee 1 address', 'Declaration place', 'Endorsing organisation', 'Forwarding officer'] as $heading) {
+            $this->assertStringContainsString($heading, $csv->streamedContent());
+        }
         $this->assertStringNotContainsString('Good candidate', $csv->streamedContent());
         $this->assertDatabaseHas('export_logs', ['user_id' => $this->admin->id, 'report' => 'consolidated', 'is_sensitive' => true, 'row_count' => 1]);
 

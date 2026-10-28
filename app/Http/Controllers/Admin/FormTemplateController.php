@@ -70,6 +70,10 @@ class FormTemplateController extends Controller
     public function destroy(string $kind, int $id): JsonResponse
     {
         $template = $this->model($kind)::findOrFail($id);
+        $inUse = $kind === 'referee'
+            ? DB::table('advertisements')->where('referee_form_template_id', $id)->whereNull('disposed_at')->exists()
+            : DB::table('committees')->where('evaluation_form_template_id', $id)->exists();
+        abort_if($inUse, 422, 'This form is in use by an advertisement or committee. Mark it inactive instead of deleting it, or change their form first.');
         $this->audit->record("{$kind}_form.deleted", $template, ['name' => $template->name]);
         $template->delete(); // soft delete: submitted responses keep their question snapshot regardless
 

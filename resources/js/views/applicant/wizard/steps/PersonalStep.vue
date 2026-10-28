@@ -12,6 +12,7 @@ const props = defineProps<{ form: PersonalData }>();
 const { payload, errors } = useWizard();
 const opts = computed(() => payload.value.options);
 const inv = (k: string) => ({ 'is-invalid': !!errors[k] });
+const salutations = computed<string[]>(() => (opts.value as { salutations?: string[] }).salutations ?? ['Dr', 'Mr', 'Mrs', 'Ms']);
 
 function onName(e: Event) {
     const el = e.target as HTMLInputElement;
@@ -50,7 +51,15 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
             <div class="card-header">Sections 5–16 · Personal information</div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-12">
+                    <div class="col-sm-3 col-md-2">
+                        <label class="form-label" for="p-salutation">Title</label>
+                        <select id="p-salutation" v-model="form.salutation" class="form-select" :class="inv('salutation')">
+                            <option :value="null">—</option>
+                            <option v-for="s in salutations" :key="s" :value="s">{{ s }}</option>
+                        </select>
+                        <FieldError :errors="errors" name="salutation" />
+                    </div>
+                    <div class="col-sm-9 col-md-10">
                         <label class="form-label required" for="p-name">5. Name in full (in CAPITAL LETTERS)</label>
                         <input id="p-name" :value="form.full_name" class="form-control text-uppercase" :class="inv('full_name')" maxlength="200" autocomplete="name" @input="onName">
                         <div class="form-text">As it appears in your Class 10 certificate.</div>

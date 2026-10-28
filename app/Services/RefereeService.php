@@ -62,6 +62,10 @@ class RefereeService
 
                 continue;
             }
+            if ($current && $current->state === RefereeInvitation::REVOKED && $current->email === $referee->email) {
+                // Staff revoked this referee deliberately; only changed referee details earn a new link.
+                continue;
+            }
             $created->push($this->issue($referee, $actor));
         }
 
@@ -120,6 +124,7 @@ class RefereeService
         if ($invitation->state !== RefereeInvitation::ACTIVE) {
             throw ValidationException::withMessages(['invitation' => 'Only a pending invitation can be revoked.']);
         }
+        $invitation->loadMissing('application');
         $invitation->forceFill([
             'state' => $state,
             'revoked_at' => now(),

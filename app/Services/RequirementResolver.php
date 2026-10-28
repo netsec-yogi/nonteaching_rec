@@ -13,6 +13,19 @@ use Illuminate\Support\Collection;
  */
 class RequirementResolver
 {
+    /**
+     * Document types that belong to one row of a repeatable section (the SPA's ROW_DOCUMENTS):
+     * code => [relation on Application, morph alias]. A mandatory requirement of such a type
+     * means one upload per row — the paper form asks for certificates of *each* qualification.
+     */
+    public const ROW_DOCUMENT_TYPES = [
+        'qualification_certificate' => ['qualifications', 'qualification'],
+        'experience_certificate' => ['employments', 'employment'],
+        'merit_certificate' => ['meritRecords', 'merit_record'],
+        'training_certificate' => ['trainings', 'training'],
+        'membership_certificate' => ['memberships', 'membership'],
+    ];
+
     public function __construct(private FeeCalculator $fees) {}
 
     /** @return Collection<int, DocumentRequirement> requirements whose condition holds */
@@ -32,11 +45,36 @@ class RequirementResolver
     /** Requirements that are mandatory and have no upload yet. */
     public function missingDocuments(Application $application): Collection
     {
-        $uploadedTypeIds = $application->documents()->pluck('document_type_id')->unique();
+        $documents = $application->documents()->get(['document_type_id', 'documentable_type', 'documentable_id']);
+        $uploadedTypeIds = $documents->pluck('document_type_id')->unique();
 
         return $this->documentRequirements($application)
-            ->filter(fn (DocumentRequirement $r) => $r->is_mandatory && ! $uploadedTypeIds->contains($r->document_type_id))
+            ->filter(function (DocumentRequirement $r) use ($application, $documents, $uploadedTypeIds) {
+                if (! $r->is_mandatory) {
+                    return false;
+                }
+                $rows = $this->rowsWithoutDocument($r, $application, $documents);
+
+                return $rows === null ? ! $uploadedTypeIds->contains($r->document_type_id) : $rows->isNotEmpty();
+            })
             ->values();
+    }
+
+    /**
+     * For a per-row document type, the rows of this application that still have no upload of that
+     * type attached. Null for ordinary (application-level) document types.
+     */
+    public function rowsWithoutDocument(DocumentRequirement $r, Application $application, ?Collection $documents = null): ?Collection
+    {
+        $map = self::ROW_DOCUMENT_TYPES[$r->documentType->code] ?? null;
+        if (! $map) {
+            return null;
+        }
+        [$relation, $morph] = $map;
+        $documents ??= $application->documents()->get(['document_type_id', 'documentable_type', 'documentable_id']);
+        $covered = $documents->where('document_type_id', $r->document_type_id)->where('documentable_type', $morph)->pluck('documentable_id');
+
+        return $application->$relation()->get()->reject(fn ($row) => $covered->contains($row->id))->values();
     }
 
     public function conditionHolds(string $condition, Application $application): bool

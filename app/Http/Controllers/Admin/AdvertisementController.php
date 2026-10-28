@@ -45,7 +45,7 @@ class AdvertisementController extends Controller
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->when($request->cycle_id, fn ($q, $c) => $q->where('recruitment_cycle_id', $c))
             ->orderByDesc('opens_at')
-            ->paginate((int) $request->input('per_page', 25));
+            ->paginate(min((int) $request->input('per_page', 25), 100));
 
         return response()->json($ads);
     }

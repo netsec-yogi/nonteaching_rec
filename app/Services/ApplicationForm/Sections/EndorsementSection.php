@@ -111,9 +111,14 @@ class EndorsementSection extends Section
         if (! $this->requirements->endorsementRequired($application)) {
             return [];
         }
+        // Re-check every mandatory particular at submission time: the step may have been saved while
+        // the endorsement was still optional (e.g. before the candidate declared in-service status).
         $e = $application->endorsement;
-        $issues = (! $e || ! $e->forwarding_officer_name || ! $e->no_objection_certified)
-            ? ['Complete the employer endorsement (Section 32) — it is mandatory for in-service candidates under this advertisement.'] : [];
+        $complete = $e && $e->employer_organization && $e->designation && $e->employment_type && $e->employment_start_date
+            && $e->pay_scale_level && $e->basic_pay !== null && $e->no_disciplinary_case_certified && $e->no_objection_certified
+            && $e->forwarding_officer_name && $e->forwarding_officer_designation && $e->place && $e->endorsed_on;
+        $issues = $complete ? []
+            : ['Complete the employer endorsement (Section 32) — every particular, both certifications and the forwarding officer\'s details are mandatory for in-service candidates under this advertisement.'];
 
         return array_merge($issues, $this->missingDocumentIssues($application));
     }

@@ -17,7 +17,7 @@ final class Permissions
         'configuration.manage' => ['Manage checklists, document types, referee and evaluation forms', 'configuration', false, []],
         'templates.manage' => ['Edit email templates', 'configuration', false, []],
         'settings.manage' => ['Edit system settings and retention policy', 'configuration', false, []],
-        'users.manage' => ['Create users, assign roles, teams and committees', 'administration', false, []],
+        'users.manage' => ['Create users, assign roles, teams and committees', 'administration', true, []],
         'audit.view' => ['View audit logs and access logs', 'administration', true, []],
         'email_logs.view' => ['View email delivery logs', 'administration', false, [Role::RECRUITMENT_ADMIN]],
 

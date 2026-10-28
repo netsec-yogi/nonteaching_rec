@@ -106,9 +106,9 @@ async function logout() {
                     <slot name="topbar" />
                     <ThemeToggle />
                     <div class="position-relative">
-                        <button type="button" class="shell-icon-button" :aria-label="`Notifications (${unread} unread)`" :aria-expanded="bell" @click="bell = !bell">
+                        <button type="button" class="shell-icon-button" :aria-label="unread ? `${unread > 99 ? '99+' : unread} unread notifications` : 'Notifications'" :aria-expanded="bell" @click="bell = !bell">
                             <i class="bi bi-bell"></i>
-                            <span v-if="unread" class="shell-dot">{{ unread > 99 ? '99+' : unread }}</span>
+                            <span v-if="unread" class="shell-dot" aria-hidden="true">{{ unread > 99 ? '99+' : unread }}</span>
                         </button>
                         <template v-if="bell">
                             <div class="position-fixed top-0 start-0 w-100 h-100" style="z-index: 1055" aria-hidden="true" @click="bell = false"></div>

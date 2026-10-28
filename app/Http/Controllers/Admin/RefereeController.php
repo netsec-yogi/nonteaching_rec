@@ -26,7 +26,7 @@ class RefereeController extends Controller
 
     private function invitation(Application $application, string $uuid): RefereeInvitation
     {
-        return RefereeInvitation::with('referee')->where('application_id', $application->id)->where('uuid', $uuid)->firstOrFail();
+        return RefereeInvitation::with(['referee', 'application'])->where('application_id', $application->id)->where('uuid', $uuid)->firstOrFail();
     }
 
     public function action(Request $request, Application $application, string $invitation, string $action): JsonResponse
@@ -120,7 +120,12 @@ class RefereeController extends Controller
             'reason' => $data['reason'],
             'amended_by' => $request->user()->id,
         ]);
-        $this->audit->record('referee.recommendation_amended', $amendment, ['value' => $amendment->original_value], ['value' => $amendment->amended_value],
+        // The audit log is readable with audit.view alone, so recommendation content never goes into it:
+        // for confidential fields only the amendment id is recorded (the amendment row holds the values).
+        $confidential = in_array($data['field'], ['overall_recommendation', 'comments'], true);
+        $this->audit->record('referee.recommendation_amended', $amendment,
+            $confidential ? [] : ['value' => $amendment->original_value],
+            $confidential ? ['amendment_id' => $amendment->id] : ['value' => $amendment->amended_value],
             ['field' => $data['field'], 'reason' => $data['reason']], application: $application);
 
         return response()->json(['ok' => true], 201);

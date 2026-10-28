@@ -71,7 +71,13 @@ abstract class Section
     {
         return $this->requirements->missingDocuments($application)
             ->filter(fn ($r) => $r->documentType->step === $this->key())
-            ->map(fn ($r) => 'Upload required: '.$r->documentType->name.'.')
+            ->map(function ($r) use ($application) {
+                $rows = $this->requirements->rowsWithoutDocument($r, $application);
+
+                return $rows === null
+                    ? 'Upload required: '.$r->documentType->name.'.'
+                    : 'Upload required: '.$r->documentType->name.' for every entry on this step ('.$rows->count().' still without one).';
+            })
             ->values()
             ->all();
     }

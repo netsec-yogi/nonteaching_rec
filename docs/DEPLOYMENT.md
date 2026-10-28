@@ -127,7 +127,7 @@ The staging `.env` must set different `HTTP_PORT`/`HTTPS_PORT` and
 sudo apt install nginx mysql-server redis-server supervisor unzip git \
     php8.3-fpm php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml php8.3-curl \
     php8.3-zip php8.3-gd php8.3-intl php8.3-bcmath php8.3-redis
-# Composer: https://getcomposer.org/download/   Node.js 20 LTS (build step only)
+# Composer: https://getcomposer.org/download/   Node.js 22 LTS (build step only; Vite 7 needs 22.12+)
 ```
 
 Optional: `clamav-daemon` for upload virus scanning (set `CLAMAV_HOST=127.0.0.1`).
@@ -170,7 +170,7 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache &&
 
 sudo chown -R deploy:www-data storage bootstrap/cache
 sudo chmod -R ug+rwX storage bootstrap/cache
-chmod 600 .env
+sudo chown deploy:www-data .env && sudo chmod 640 .env     # PHP-FPM (www-data) must be able to read it
 ```
 
 `storage/app/private` holds every applicant document and generated PDF. It must never be
@@ -285,6 +285,24 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache &&
 php artisan queue:restart                   # workers pick up the new code
 php artisan up
 ```
+
+## 7a. Troubleshooting sign-in
+
+**"Sign-in is not available from this address"** (HTTP 419 on `POST /api/auth/login`), or in
+older builds `Session store not set on request` in `storage/logs/laravel.log`: Sanctum starts a
+session only for requests whose `Origin`/`Referer` host is listed in `SANCTUM_STATEFUL_DOMAINS`.
+Set it to exactly what users type in the address bar — host plus port, no scheme, several values
+comma-separated (`recruitment.iiitm.ac.in,10.10.1.20:8443`) — then rebuild the cache:
+
+```bash
+php artisan config:clear && php artisan config:cache && sudo systemctl reload php8.3-fpm
+php artisan recruitment:preflight --production     # checks APP_URL's host is in the list
+```
+
+If the request carries neither header, look for a `Referrer-Policy: no-referrer` line added to the
+Nginx site and remove it (the application sends `same-origin`, which Sanctum needs). Over plain
+`http://` the session cookie is dropped by the browser (`SESSION_SECURE_COOKIE=true`): use HTTPS,
+or for a short LAN test set `SESSION_SECURE_COOKIE=false` and `FORCE_HTTPS=false`.
 
 ## 8. Go-live checklist
 

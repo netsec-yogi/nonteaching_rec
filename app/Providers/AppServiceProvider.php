@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models;
 use App\Services\SettingsService;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -58,6 +59,11 @@ class AppServiceProvider extends ServiceProvider
             'role' => Models\Role::class,
             'setting' => Models\Setting::class,
         ]);
+
+        // Outside production, lazy loading a relation throws instead of silently running N+1 queries,
+        // and attributes that are not fillable throw instead of being dropped. Production stays lenient.
+        Model::preventLazyLoading(! $this->app->isProduction());
+        Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
 
         if (config('app.force_https')) {
             URL::forceScheme('https');

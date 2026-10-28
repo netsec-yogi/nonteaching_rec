@@ -44,6 +44,9 @@ class CommitteeController extends Controller
 
     public function context(Request $request, Application $application): JsonResponse
     {
+        if ($request->user()->isSuperAdmin() && ! $application->committeeAssignments()->exists()) {
+            abort(409, 'This application has not been forwarded to a Screening Committee yet.');
+        }
         $this->authorize('evaluate', $application);
         $user = $request->user();
         $committee = $this->committees->committeeFor($application, $user);

@@ -83,6 +83,7 @@ class ChecklistTemplateController extends Controller
 
     public function copy(Request $request, ChecklistTemplate $checklistTemplate): JsonResponse
     {
+        $request->validate(['name' => ['nullable', 'string', 'max:150']]);
         $copy = DB::transaction(function () use ($checklistTemplate, $request) {
             $copy = ChecklistTemplate::create([
                 'name' => $request->input('name', $checklistTemplate->name.' (copy)'),

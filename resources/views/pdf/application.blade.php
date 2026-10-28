@@ -13,6 +13,7 @@
     /* Page-one identity block: application details beside the photograph space. */
     .ident { width: 100%; border-collapse: collapse; margin-bottom: 1mm; }
     .ident > tbody > tr > td { vertical-align: top; padding: 0; }
+    .photo { display: block; margin-left: auto; width: 26mm; height: 31mm; border: 0.6pt solid #9ca3af; object-fit: cover; }
     .photo-box { margin-left: auto; width: 26mm; height: 31mm; border: 0.6pt solid #9ca3af; font-size: 6.5pt; color: #6b7280; text-align: center; padding-top: 11mm; line-height: 1.3; }
     .ref { font-size: 10pt; font-weight: bold; color: #111c45; }
     .declaration-text { text-align: justify; line-height: 1.15; }
@@ -34,7 +35,7 @@
         <tr><td class="n">4.</td><td class="k">Name of the Post Applied for</td><td class="v"><span class="strong">{{ $s['application']['post'] }}</span> ({{ $s['application']['post_code'] }}){{ $s['application']['department'] ? ', '.$s['application']['department'] : '' }}</td></tr>
         <tr><td class="n"></td><td class="k">Application Reference No.</td><td class="v ref">{{ $v($m['reference_no']) }}</td></tr>
     </table>
-</td><td style="width: 30mm"><div class="photo-box">Photograph uploaded<br>with the online<br>application</div></td></tr></table>
+</td><td style="width: 30mm">@if(!empty($photo))<img class="photo" src="{{ $photo }}" alt="Photograph">@else<div class="photo-box">Photograph uploaded<br>with the online<br>application</div>@endif</td></tr></table>
 
 {{-- Section 1 --}}
 <div class="keep">
@@ -189,6 +190,8 @@
             <tr><th>{{ $label }}</th>@foreach($s['referees'] as $r)<td class="{{ $key === 'email' ? 'break-all' : '' }}">{{ $v($r[$key]) }}</td>@endforeach</tr>
         @endforeach
             <tr><th>Present / recent employer or superior</th>@foreach($s['referees'] as $r)<td>{{ $r['is_employer_or_superior'] ? 'Yes' : 'No' }}</td>@endforeach</tr>
+            <tr><th>Resident in India</th>@foreach($s['referees'] as $r)<td>{{ ($r['is_resident_of_india'] ?? null) ? 'Yes' : 'No' }}</td>@endforeach</tr>
+            <tr><th>Not a relation</th>@foreach($s['referees'] as $r)<td>{{ ($r['is_not_relative'] ?? null) ? 'Yes' : 'No' }}</td>@endforeach</tr>
         </tbody>
     </table>
 </div>
@@ -229,7 +232,7 @@
     @if($s['endorsement'])
         @php $e = $s['endorsement']; @endphp
         <p class="declaration-text">
-            The applicant <span class="strong">{{ $p['full_name'] }}</span>, who has submitted this application for the post of <span class="strong">{{ $s['application']['post'] }}</span>
+            The applicant <span class="strong">{{ trim(($p['salutation'] ?? '').' '.$p['full_name']) }}</span>, who has submitted this application for the post of <span class="strong">{{ $s['application']['post'] }}</span>
             in ABV-Indian Institute of Information Technology and Management, Gwalior, is working in this organisation namely
             <span class="strong">{{ $v($e['employer_organization']) }}</span> as <span class="strong">{{ $v($e['designation']) }}</span>, in a
             <span class="strong">{{ strtolower($v($e['employment_type'])) }}</span> capacity with effect from <span class="strong">{{ $d($e['employment_start_date']) }}</span>

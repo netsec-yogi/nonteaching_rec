@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 class PersonalSection extends Section
 {
     private const FIELDS = [
-        'full_name', 'relation_type', 'relation_name', 'date_of_birth', 'place_of_birth', 'mobile',
+        'salutation', 'full_name', 'relation_type', 'relation_name', 'date_of_birth', 'place_of_birth', 'mobile',
         'email', 'nationality', 'gender', 'marital_status', 'category', 'is_pwd', 'disability_type',
         'disability_percentage', 'nearest_railway_station', 'permanent_same_as_correspondence',
     ];
@@ -34,7 +34,8 @@ class PersonalSection extends Section
     public function rules(Application $application): array
     {
         $rules = [
-            'full_name' => ['required', 'string', 'max:200', 'regex:/^[A-Za-z .\'-]+$/'],
+            'salutation' => ['nullable', Rule::in(config('recruitment.salutations'))],
+            'full_name' => ['required', 'string', 'max:200', 'regex:/^[\p{L}\p{M} .\'-]+$/u'],
             'relation_type' => ['required', Rule::in(['father', 'husband'])],
             'relation_name' => ['required', 'string', 'max:200'],
             'date_of_birth' => ['required', 'date', 'before:-14 years', 'after:-100 years'],

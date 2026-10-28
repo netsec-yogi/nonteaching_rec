@@ -25,7 +25,7 @@ class UserController extends Controller
             ->when($request->boolean('staff', true), fn ($q) => $q->whereHas('roles', fn ($x) => $x->where('is_staff', true)))
             ->when($request->q, fn ($q, $t) => $q->where(fn ($w) => $w->where('name', 'like', "%$t%")->orWhere('email', 'like', "%$t%")))
             ->orderBy('name')
-            ->paginate((int) $request->input('per_page', 25));
+            ->paginate(min((int) $request->input('per_page', 25), 100));
 
         return response()->json($users);
     }
@@ -64,6 +64,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): JsonResponse
     {
+        $this->assertMayManage($request, $user);
         $data = $this->validated($request, $user);
         abort_if($user->id === $request->user()->id && ! in_array(Role::SUPER_ADMIN, $data['roles'], true) && $user->isSuperAdmin(), 422,
             'You cannot remove your own Super Administrator role.');
@@ -87,16 +88,26 @@ class UserController extends Controller
         return response()->json($user->fresh('roles'));
     }
 
-    public function sendReset(User $user): JsonResponse
+    public function sendReset(Request $request, User $user): JsonResponse
     {
+        $this->assertMayManage($request, $user);
         Password::sendResetLink(['email' => $user->email]);
         $this->audit->record('user.reset_link_sent', $user);
 
         return response()->json(['message' => 'Password reset link sent.']);
     }
 
+    /** Only a Super Administrator may touch a Super Administrator's account (email, roles, status, reset link). */
+    private function assertMayManage(Request $request, User $user): void
+    {
+        abort_if($user->isSuperAdmin() && ! $request->user()->isSuperAdmin(), 403, 'Only a Super Administrator can manage a Super Administrator account.');
+    }
+
     private function validated(Request $request, ?User $user = null): array
     {
+        // Holding users.manage never confers the right to create or grant the Super Administrator role.
+        $assignable = $request->user()->isSuperAdmin() ? Role::STAFF : array_values(array_diff(Role::STAFF, [Role::SUPER_ADMIN]));
+
         return $request->validate([
             'name' => ['required', 'string', 'max:200'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
@@ -104,7 +115,7 @@ class UserController extends Controller
             'designation' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => [Rule::in(Role::STAFF)],
+            'roles.*' => [Rule::in($assignable)],
         ]);
     }
 }

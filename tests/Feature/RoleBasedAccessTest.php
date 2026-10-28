@@ -95,6 +95,27 @@ class RoleBasedAccessTest extends TestCase
         $this->getJson('/api/admin/cycles')->assertOk();
     }
 
+    public function test_user_management_cannot_grant_or_touch_super_administrator(): void
+    {
+        $role = Role::where('slug', 'recruitment_admin')->first();
+        $perms = $role->permissions()->pluck('slug')->push('users.manage')->all();
+        $this->actingAs($this->super)->putJson("/api/admin/roles/{$role->id}/permissions", ['permissions' => $perms])->assertOk();
+
+        $self = ['name' => $this->admin->name, 'email' => $this->admin->email, 'is_active' => true];
+        $this->actingAs($this->admin->fresh());
+        // Cannot promote oneself (or anyone) to Super Administrator.
+        $this->putJson("/api/admin/users/{$this->admin->id}", $self + ['roles' => ['recruitment_admin', 'super_admin']])->assertUnprocessable()->assertJsonValidationErrors('roles.1');
+        $this->postJson('/api/admin/users', ['name' => 'X', 'email' => 'x@iiitm.test', 'roles' => ['super_admin']])->assertUnprocessable();
+        // Cannot change a Super Administrator's email (and then request their reset link).
+        $this->putJson("/api/admin/users/{$this->super->id}", ['name' => 'S', 'email' => 'ra@iiitm.test', 'roles' => ['super_admin']])->assertForbidden();
+        $this->postJson("/api/admin/users/{$this->super->id}/reset")->assertForbidden();
+        $this->assertFalse($this->admin->fresh()->isSuperAdmin());
+
+        // A Super Administrator still can.
+        $this->actingAs($this->super)->putJson("/api/admin/users/{$this->admin->id}", $self + ['roles' => ['recruitment_admin', 'super_admin']])->assertOk();
+        $this->assertTrue($this->admin->fresh()->isSuperAdmin());
+    }
+
     public function test_permissions_are_configurable_per_role(): void
     {
         $this->actingAs($this->admin)->getJson('/api/admin/reports/consolidated')->assertOk();
@@ -132,6 +153,29 @@ class RoleBasedAccessTest extends TestCase
         $this->getJson('/api/admin/email-templates')->assertForbidden();
         $this->getJson('/api/admin/logs/audit')->assertForbidden();
         $this->actingAs($this->super)->getJson('/api/admin/logs/audit')->assertOk();
+    }
+
+    public function test_log_viewers_are_scoped_to_visible_applications(): void
+    {
+        $role = Role::where('slug', 'scrutiny_user')->first();
+        $perms = $role->permissions()->pluck('slug')->push('audit.view')->push('email_logs.view')->all();
+        $this->actingAs($this->super)->putJson("/api/admin/roles/{$role->id}/permissions", ['permissions' => $perms])->assertOk();
+
+        // The scrutiny user is not assigned to this application, so its trail must not appear.
+        $this->actingAs($this->scrutiny->fresh());
+        foreach (['/api/admin/logs/audit', '/api/admin/logs/access', '/api/admin/logs/emails'] as $url) {
+            $rows = $this->getJson($url)->assertOk()->json('data');
+            $this->assertEmpty(array_filter($rows, fn ($r) => $r['application_id'] !== null), "$url leaks application entries");
+        }
+        $this->actingAs($this->super);
+        $this->assertNotEmpty(array_filter($this->getJson('/api/admin/logs/audit')->json('data'), fn ($r) => $r['application_id'] === $this->application->id));
+    }
+
+    public function test_a_form_template_in_use_cannot_be_deleted(): void
+    {
+        $id = $this->ad->referee_form_template_id;
+        $this->actingAs($this->super)->deleteJson("/api/admin/forms/referee/$id")->assertUnprocessable();
+        $this->assertDatabaseHas('referee_form_templates', ['id' => $id, 'deleted_at' => null]);
     }
 
     public function test_audit_log_is_append_only(): void

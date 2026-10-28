@@ -55,6 +55,11 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ]);
+        // Sanctum starts a session only for requests whose Origin/Referer host is listed in
+        // SANCTUM_STATEFUL_DOMAINS. Without one, sign-in cannot work; say so instead of failing later.
+        abort_unless($request->hasSession(), 419, 'Sign-in is not available from this address. The server must list '
+            .($request->getHost() ?: 'this host').' in SANCTUM_STATEFUL_DOMAINS.');
+
         $email = mb_strtolower($credentials['email']);
         $user = User::where('email', $email)->first();
 
@@ -155,7 +160,8 @@ class AuthController extends Controller
         );
 
         if ($status !== Password::PASSWORD_RESET) {
-            throw ValidationException::withMessages(['email' => __($status)]);
+            // One message whether the email is unknown or the token is wrong: no account enumeration.
+            throw ValidationException::withMessages(['email' => 'This password reset link is invalid or has expired. Request a new one.']);
         }
 
         return response()->json(['message' => 'Your password has been reset. You can now sign in.']);

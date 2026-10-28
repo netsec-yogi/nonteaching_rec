@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Advertisement;
 use App\Models\Application;
 use App\Models\ExportLog;
 use App\Models\Post;
@@ -322,6 +323,8 @@ class ReportService
     private function vacancyStats(array $filters, User $user): array
     {
         $posts = Post::with(['advertisement', 'vacancies'])
+            ->when(! $user->isSuperAdmin(), fn ($q) => $q->whereIn('advertisement_id',
+                app(ApplicationAccess::class)->scope(Application::query(), $user)->select('applications.advertisement_id')))
             ->when($filters['advertisement_id'] ?? null, fn ($q, $v) => $q->where('advertisement_id', $v))
             ->when($filters['post_id'] ?? null, fn ($q, $v) => $q->where('id', $v))
             ->orderBy('advertisement_id')->orderBy('sort_order')->get();
@@ -345,56 +348,95 @@ class ReportService
             'Applications started', 'Submitted', 'Recommended at scrutiny', 'Applicants per vacancy'], $rows];
     }
 
-    /** One row per application; repeatable sections flattened to numbered columns. */
+    /**
+     * One row per application covering every section of the paper form. Repeatable sections are
+     * flattened to numbered column groups (qualifications, employments, referees); the shorter
+     * optional lists (21–23) are joined into one cell each so nothing is dropped.
+     */
     private function consolidated(Builder $q): array
     {
         $maxQ = 6;
         $maxE = 5;
-        $headings = ['Reference No.', 'Status', 'Submitted', 'Version', 'Advertisement', 'Post code', 'Post',
-            'Full name', "Father's / Husband's name", 'Date of birth', 'Place of birth', 'Gender', 'Marital status', 'Category',
-            'PwD', 'Disability', 'Ex-serviceman', 'Nationality', 'Mobile', 'Email', 'Nearest railway station',
+        // Column groups for as many referees as any advertisement asks for (3 on the paper form, up to 5).
+        $maxR = max(3, min(5, (int) Advertisement::max('referees_required')));
+        $decl = ['sec20' => 'Sec 20 conviction / case / enquiry', 'sec26a' => 'Sec 26(a) arrested / prosecuted / debarred', 'sec26b' => 'Sec 26(b) case pending',
+            'sec27' => 'Sec 27 medically unfit / resigned / dismissed', 'sec28' => 'Sec 28 previously applied', 'sec29' => 'Sec 29 through proper channel', 'sec30' => 'Sec 30 ACR/APAR enclosed'];
+        $yn = fn ($v) => $v === null ? null : ($v ? 'Yes' : 'No');
+        $d = fn ($v) => $v?->format('d-m-Y');
+
+        $headings = ['Reference No.', 'Status', 'Submitted', 'Application date', 'Version', 'Advertisement', 'Post code', 'Post',
+            'Salutation', 'Full name', 'Relation', "Father's / Husband's name", 'Date of birth', 'Place of birth', 'Gender', 'Marital status', 'Category',
+            'PwD', 'Disability', 'Disability %', 'Ex-serviceman', 'Ex-serviceman category', 'Nationality', 'Mobile', 'Email', 'Nearest railway station',
             'Correspondence address', 'Permanent address',
-            'Fee status', 'Payment method', 'UTR / DD No.', 'Payment date', 'Amount',
+            'Fee status', 'Payment method', 'UTR / DD No.', 'Payment date', 'Amount', 'Issuing bank', 'Fee exemption basis',
             'In service', 'Total experience (months)', 'Scrutiny status', 'Outcome', 'Committee status',
             'Document status', 'Endorsement status', 'Referee status'];
         for ($i = 1; $i <= $maxQ; $i++) {
-            array_push($headings, "Qualification $i", "Qualification $i board/university", "Qualification $i year", "Qualification $i %");
+            array_push($headings, "Qualification $i", "Qualification $i board/university", "Qualification $i duration", "Qualification $i year",
+                "Qualification $i division", "Qualification $i %", "Qualification $i subjects", "Qualification $i specialization");
         }
         for ($i = 1; $i <= $maxE; $i++) {
-            array_push($headings, "Employment $i organisation", "Employment $i post", "Employment $i type", "Employment $i from", "Employment $i to");
+            array_push($headings, "Employment $i organisation", "Employment $i post", "Employment $i type", "Employment $i from", "Employment $i to",
+                "Employment $i months", "Employment $i pay scale/level", "Employment $i basic pay", "Employment $i gross pay", "Employment $i nature of duties");
         }
-        foreach ([1, 2, 3] as $i) {
-            array_push($headings, "Referee $i name", "Referee $i designation", "Referee $i email", "Referee $i phone", "Referee $i recommendation status");
+        foreach ($decl as $label) {
+            array_push($headings, $label, "$label — details");
         }
-        $headings[] = 'Additional qualifications / employments';
+        array_push($headings, 'Sec 21 certificates of excellence / merit', 'Sec 22 training / consultancy', 'Sec 23 professional memberships',
+            'Sec 24 suitability statement', 'Sec 31 other achievements');
+        for ($i = 1; $i <= $maxR; $i++) {
+            array_push($headings, "Referee $i name", "Referee $i designation", "Referee $i organisation", "Referee $i address", "Referee $i email", "Referee $i phone",
+                "Referee $i employer/superior", "Referee $i recommendation status");
+        }
+        array_push($headings, 'Declaration place', 'Declaration date', 'Declaration accepted at',
+            'Endorsing organisation', 'Endorsement post', 'Endorsement capacity', 'Endorsement w.e.f.', 'Endorsement pay scale/level', 'Endorsement basic pay',
+            'Next increment due', 'No disciplinary case certified', 'No objection certified', 'Forwarding officer', 'Forwarding officer designation',
+            'Endorsement place', 'Endorsed on', 'Additional qualifications / employments');
 
-        $rows = (function () use ($q, $maxQ, $maxE) {
-            $relations = ['personal', 'addresses', 'post', 'advertisement', 'payment', 'qualifications', 'employments', 'referees.invitations', 'referees.response:id,referee_id'];
+        $rows = (function () use ($q, $maxQ, $maxE, $maxR, $decl, $yn, $d) {
+            $relations = ['personal', 'addresses', 'post', 'advertisement', 'payment', 'qualifications', 'employments', 'declarations',
+                'meritRecords', 'trainings', 'memberships', 'endorsement', 'referees.invitations', 'referees.response:id,referee_id'];
             foreach ($q->with($relations)->lazyById(300, 'applications.id', 'id') as $a) {
                 $p = $a->personal;
-                $row = [$a->reference_no, $this->label($a->status), $a->submitted_at?->format('d-m-Y H:i'), $a->version,
+                $e = $a->endorsement;
+                $row = [$a->reference_no, $this->label($a->status), $a->submitted_at?->format('d-m-Y H:i'), $d($a->application_date), $a->version,
                     $a->advertisement->number, $a->post->code, $a->post->name,
-                    $p?->full_name, $p?->relation_name, $p?->date_of_birth?->format('d-m-Y'), $p?->place_of_birth,
-                    $p?->gender, $p?->marital_status, $p?->category, $p?->is_pwd ? 'Yes' : 'No', $p?->disability_type,
-                    $p?->is_ex_serviceman ? 'Yes' : 'No', $p?->nationality, $p?->mobile, $p?->email, $p?->nearest_railway_station,
+                    $p?->salutation, $p?->full_name, $p?->relation_type ? ucfirst($p->relation_type) : null, $p?->relation_name, $d($p?->date_of_birth), $p?->place_of_birth,
+                    $p?->gender, $p?->marital_status, $p?->category, $yn($p?->is_pwd), $p?->disability_type, $p?->disability_percentage,
+                    $yn($p?->is_ex_serviceman), $p?->ex_serviceman_category, $p?->nationality, $p?->mobile, $p?->email, $p?->nearest_railway_station,
                     $a->address('correspondence')?->formatted(), $a->address('permanent')?->formatted(),
-                    $this->label($a->fee_status), $a->payment?->method, $a->payment?->utr_number, $a->payment?->transaction_date?->format('d-m-Y'), $a->payment?->amount,
-                    $a->is_in_service ? 'Yes' : 'No', (int) $a->employments->sum('duration_months'),
+                    $this->label($a->fee_status), $a->payment?->method, $a->payment?->utr_number, $d($a->payment?->transaction_date), $a->payment?->amount,
+                    $a->payment?->bank_name, $a->payment?->exemption_basis,
+                    $yn($a->is_in_service), (int) $a->employments->sum('duration_months'),
                     $this->label($a->scrutiny_status), $this->label($a->outcome), $this->label($a->committee_status),
                     $this->label($a->document_status), $this->label($a->endorsement_status), $this->label($a->referee_status)];
                 for ($i = 0; $i < $maxQ; $i++) {
                     $x = $a->qualifications->get($i);
-                    array_push($row, $x?->examination, $x?->board_university, $x?->year_of_passing, $x?->percentage);
+                    array_push($row, $x?->examination, $x?->board_university, $x?->duration, $x?->year_of_passing, $x?->division, $x?->percentage, $x?->subjects, $x?->specialization);
                 }
                 for ($i = 0; $i < $maxE; $i++) {
                     $x = $a->employments->get($i);
-                    array_push($row, $x?->organization, $x?->post_held, $x?->employment_type, $x?->from_date?->format('d-m-Y'), $x?->is_current ? 'Till date' : $x?->to_date?->format('d-m-Y'));
+                    array_push($row, $x?->organization, $x?->post_held, $x?->employment_type, $d($x?->from_date), $x?->is_current ? 'Till date' : $d($x?->to_date),
+                        $x?->duration_months, $x?->pay_scale_level, $x?->basic_pay, $x?->gross_pay, $x?->nature_of_duties);
                 }
-                foreach ([1, 2, 3] as $pos) {
+                foreach (array_keys($decl) as $code) {
+                    $x = $a->declarations->firstWhere('code', $code);
+                    array_push($row, $yn($x?->answer), $x?->details);
+                }
+                array_push($row,
+                    $a->meritRecords->map(fn ($m) => trim($m->title.' — '.$m->awarded_by.($m->awarded_on ? ' ('.$d($m->awarded_on).')' : '')))->implode('; '),
+                    $a->trainings->map(fn ($t) => trim(ucfirst($t->type).': '.$t->title.($t->organization ? ', '.$t->organization : '')))->implode('; '),
+                    $a->memberships->map(fn ($m) => trim($m->institute_name.' — '.$m->membership_category.($m->membership_number ? ' #'.$m->membership_number : '')))->implode('; '),
+                    $a->suitability_statement, $a->other_achievements);
+                for ($pos = 1; $pos <= $maxR; $pos++) {
                     $r = $a->referees->firstWhere('position', $pos);
-                    array_push($row, $r?->name, $r?->designation, $r?->email, $r?->phone,
-                        $r?->response ? 'Completed' : $this->label($r?->invitations->first()?->recommendationStatus() ?? 'not invited'));
+                    array_push($row, $r?->name, $r?->designation, $r?->organization, $r?->address, $r?->email, $r?->phone, $yn($r?->is_employer_or_superior),
+                        $r ? ($r->response ? 'Completed' : $this->label($r->invitations->first()?->recommendationStatus() ?? 'not invited')) : null);
                 }
+                array_push($row, $a->declaration_place, $d($a->declaration_date), $a->declaration_accepted_at?->format('d-m-Y H:i'),
+                    $e?->employer_organization, $e?->designation, $e?->employment_type, $d($e?->employment_start_date), $e?->pay_scale_level, $e?->basic_pay,
+                    $d($e?->next_increment_date), $yn($e?->no_disciplinary_case_certified), $yn($e?->no_objection_certified), $e?->forwarding_officer_name,
+                    $e?->forwarding_officer_designation, $e?->place, $d($e?->endorsed_on));
                 $overflow = $a->qualifications->slice($maxQ)->map(fn ($x) => $x->examination.' ('.$x->year_of_passing.')')
                     ->merge($a->employments->slice($maxE)->map(fn ($x) => $x->post_held.', '.$x->organization));
                 $row[] = $overflow->implode('; ');
