@@ -87,6 +87,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('payment', [Admin\ApplicationController::class, 'verifyPayment']);
             Route::post('endorsement', [Admin\ApplicationController::class, 'verifyEndorsement']);
             Route::post('documents/{document}/verify', [Admin\ApplicationController::class, 'verifyDocument']);
+            Route::post('documents/{document}/original', [Admin\ApplicationController::class, 'recordOriginal']);
+            Route::get('identity', [Admin\ApplicationController::class, 'identity']);
             Route::post('assign', [Admin\ApplicationController::class, 'assign']);
             Route::post('reopen', [Admin\ApplicationController::class, 'reopen']);
             Route::post('referee-email-exception', [Admin\ApplicationController::class, 'refereeEmailException']);

@@ -20,6 +20,7 @@ use App\Services\RefereeService;
 use App\Services\ScrutinyService;
 use App\Services\StatusService;
 use App\Services\SubmissionService;
+use App\Support\IdentityNumbers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -82,7 +83,7 @@ class ApplicationController extends Controller
         $this->authorize('viewAsStaff', $application);
         $user = $request->user();
         $application->load(['personal', 'post.advertisement', 'advertisement', 'currentStage', 'payment.verifications.verifier:id,name',
-            'endorsement.verifier:id,name', 'documents.documentType', 'documents.verifier:id,name', 'versions.creator:id,name',
+            'endorsement.verifier:id,name', 'documents.documentType', 'documents.verifier:id,name', 'documents.originalReceiver:id,name', 'versions.creator:id,name',
             'scrutinyAssignments.user:id,name', 'scrutinyAssignments.stage', 'scrutinyReviews.stage', 'scrutinyReviews.user:id,name',
             'observations.user:id,name', 'clarificationRequests.responses.documents.documentType', 'clarificationRequests.requester:id,name',
             'committeeAssignments.committee:id,name', 'committeeDecisions.recorder:id,name', 'committeeDecisions.committee:id,name',
@@ -127,7 +128,16 @@ class ApplicationController extends Controller
                 'verified_by' => $d->verifier?->name,
                 'verified_at' => $d->verified_at?->toIso8601String(),
                 'clarification_response_id' => $d->clarification_response_id,
+                'original_due_stage' => $d->original_due_stage,
+                'original_received_at' => $d->original_received_at?->toIso8601String(),
+                'original_received_by' => $d->originalReceiver?->name,
+                'original_remarks' => $d->original_remarks,
             ]),
+            'identity' => [
+                'pan' => IdentityNumbers::maskPan($application->personal?->pan_number),
+                'aadhaar' => IdentityNumbers::maskAadhaar($application->personal?->aadhaar_number),
+                'can_reveal' => $user->hasPermission('identity.view'),
+            ],
             'payment' => $application->payment ? [
                 ...$application->payment->only(['method', 'utr_number', 'bank_name', 'status', 'remarks', 'exemption_basis']),
                 'amount' => (float) $application->payment->amount,
@@ -228,6 +238,50 @@ class ApplicationController extends Controller
         });
 
         return response()->json(['fee_status' => $application->fresh()->fee_status]);
+    }
+
+    /**
+     * Record that the original of a document submitted as a signed undertaking has been produced
+     * (and checked) — at the interview / document verification. The undertaking, its scrutiny
+     * decision and the history stay; the audit trail records who recorded it and when.
+     */
+    public function recordOriginal(Request $request, Application $application, ApplicationDocument $document): JsonResponse
+    {
+        $this->authorize('verify', $application);
+        abort_unless($document->application_id === $application->id, 404);
+        abort_unless($document->isUndertaking(), 422, 'This document was uploaded as the original; there is no undertaking to settle.');
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['received_verified', 'received_rejected', 'awaited'])],
+            'remarks' => ['required_if:status,received_rejected', 'nullable', 'string', 'max:500'],
+        ], ['remarks.required_if' => 'Give the reason the original was not accepted.']);
+
+        DB::transaction(function () use ($document, $data, $request, $application) {
+            $old = $document->only(['original_status', 'original_remarks', 'original_received_at']);
+            $received = $data['status'] !== 'awaited';
+            $document->forceFill([
+                'original_status' => $data['status'],
+                'original_remarks' => $data['remarks'] ?? null,
+                'original_received_at' => $received ? now() : null,
+                'original_received_by' => $received ? $request->user()->id : null,
+            ])->save();
+            $this->audit->record('document.original_recorded', $document, $old, $document->only(['original_status', 'original_remarks', 'original_received_at']), application: $application);
+            $this->scrutiny->refreshDocumentStatus($application);
+        });
+
+        return response()->json(['ok' => true, 'document_status' => $application->fresh()->document_status]);
+    }
+
+    /** Full PAN / Aadhaar numbers, for users given that permission; every view is logged. */
+    public function identity(Request $request, Application $application): JsonResponse
+    {
+        $this->authorize('viewAsStaff', $application);
+        abort_unless($request->user()->hasPermission('identity.view'), 403, 'You are not authorised to view full identity numbers.');
+        $p = $application->personal;
+        $this->documents->logAccess($request->user(), 'identity_numbers', $application->id, $application->id, 'view');
+        $this->audit->record('application.identity_numbers_viewed', $application, [], [], ['fields' => array_keys(array_filter(['pan' => $p?->pan_number, 'aadhaar' => $p?->aadhaar_number]))]);
+
+        return response()->json(['pan' => $p?->pan_number, 'aadhaar' => $p?->aadhaar_number])
+            ->header('Cache-Control', 'private, no-store, max-age=0');
     }
 
     public function verifyEndorsement(Request $request, Application $application): JsonResponse

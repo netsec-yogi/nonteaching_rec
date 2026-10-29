@@ -18,9 +18,9 @@ class DocumentRequirement extends BaseModel
     ];
 
     /** is_mandatory: true / false overrides the document type; null follows the document type's default. */
-    protected $casts = ['is_mandatory' => 'boolean'];
+    protected $casts = ['is_mandatory' => 'boolean', 'accepts_undertaking' => 'boolean'];
 
-    protected $appends = ['effective_mandatory'];
+    protected $appends = ['effective_mandatory', 'effective_accepts_undertaking'];
 
     /** Whether the document must be uploaded when this requirement applies. */
     public function isMandatory(): bool
@@ -32,6 +32,23 @@ class DocumentRequirement extends BaseModel
         return $this->relationLoaded('documentType')
             ? (bool) $this->documentType?->is_mandatory
             : (bool) DocumentType::whereKey($this->document_type_id)->value('is_mandatory');
+    }
+
+    /** Whether a signed undertaking may stand in for this document (requirement override, else the type's setting). */
+    public function acceptsUndertaking(): bool
+    {
+        if ($this->accepts_undertaking !== null) {
+            return $this->accepts_undertaking;
+        }
+
+        return $this->relationLoaded('documentType')
+            ? (bool) $this->documentType?->accepts_undertaking
+            : (bool) DocumentType::whereKey($this->document_type_id)->value('accepts_undertaking');
+    }
+
+    public function getEffectiveAcceptsUndertakingAttribute(): bool
+    {
+        return $this->acceptsUndertaking();
     }
 
     public function getEffectiveMandatoryAttribute(): bool

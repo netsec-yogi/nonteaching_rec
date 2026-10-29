@@ -66,6 +66,9 @@
         <tr><td class="n">12.</td><td class="k">Category</td><td class="v">{{ $v($p['category']) }}</td></tr>
         <tr><td class="n">13.</td><td class="k">Whether Physically Handicapped</td><td class="v">{{ $p['is_pwd'] }}@if($p['is_pwd'] === 'Yes') — {{ $v($p['disability_type']) }}{{ $p['disability_percentage'] ? ' ('.$p['disability_percentage'].'%)' : '' }}@endif</td></tr>
         <tr><td class="n">14.</td><td class="k">Nearest Railway Station</td><td class="v">{{ $v($p['nearest_railway_station']) }}</td></tr>
+        @if(!empty($p['pan_masked']) || !empty($p['aadhaar_masked']))
+        <tr><td class="n"></td><td class="k">PAN / Aadhaar (masked)</td><td class="v">{{ !empty($p['pan_masked']) ? 'PAN '.$p['pan_masked'] : '' }}{{ !empty($p['pan_masked']) && !empty($p['aadhaar_masked']) ? ' · ' : '' }}{{ !empty($p['aadhaar_masked']) ? 'Aadhaar '.$p['aadhaar_masked'] : '' }}</td></tr>
+        @endif
         <tr><td class="n">15.</td><td class="k">Correspondence Address</td><td class="v">{{ $v($p['correspondence_address']) }}</td></tr>
         <tr><td class="n">16.</td><td class="k">Permanent Address</td><td class="v">{{ $v($p['permanent_address']) }}</td></tr>
     </table>
@@ -223,6 +226,7 @@
         <tr><td class="k">Place</td><td class="v">{{ $v($s['candidate_declaration']['place']) }}</td></tr>
         <tr><td class="k">Date</td><td class="v">{{ $d($s['candidate_declaration']['date']) }}</td></tr>
         <tr><td class="k">Electronically accepted by the candidate</td><td class="v">{{ $dt($s['candidate_declaration']['accepted_at']) }} <span class="muted">(declaration version {{ $v($s['candidate_declaration']['version']) }})</span></td></tr>
+        <tr><td class="k">Signature of the candidate</td><td class="v">@if(!empty($signature))<img src="{{ $signature['uri'] }}" alt="Signature" style="width: {{ $signature['width_mm'] }}mm; height: {{ $signature['height_mm'] }}mm">@else<span class="muted">Not uploaded</span>@endif</td></tr>
     </table>
 </div>
 
@@ -277,7 +281,8 @@
     @forelse($s['documents'] as $i => $doc)
         <tr>
             <td class="c">{{ $i + 1 }}</td>
-            <td>{{ $doc['type'] }}@if($doc['label'])<br><span class="muted small">{{ $doc['label'] }}</span>@endif</td>
+            <td>{{ $doc['type'] }}@if($doc['label'])<br><span class="muted small">{{ $doc['label'] }}</span>@endif
+                @if(($doc['upload_type'] ?? 'original') === 'undertaking')<br><span class="strong small">Signed undertaking in place of the original</span><br><span class="muted tiny">Original not yet produced — to be produced before / at the Interview or Document Verification</span>@endif</td>
             <td><span class="break-all">{{ $doc['original_name'] }}</span><br><span class="muted tiny break-all">SHA-256 {{ substr($doc['sha256'], 0, 32) }}…</span></td>
             <td class="num" style="white-space: nowrap">{{ number_format($doc['size'] / 1024, 0) }} KB</td>
             <td>{{ $dt($doc['uploaded_at']) }}</td>

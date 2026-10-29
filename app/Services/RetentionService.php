@@ -121,6 +121,7 @@ class RetentionService
                 'full_name' => self::REDACTED, 'relation_name' => null, 'date_of_birth' => null, 'place_of_birth' => null,
                 'mobile' => null, 'email' => null, 'disability_type' => null, 'disability_percentage' => null,
                 'nearest_railway_station' => null, 'ex_serviceman_category' => null, 'ex_serviceman_details' => null,
+                'pan_number' => null, 'aadhaar_number' => null,
             ]);
             DB::table('applications')->whereIn('id', $ids)->update([
                 'suitability_statement' => null, 'other_achievements' => null, 'declaration_place' => null,

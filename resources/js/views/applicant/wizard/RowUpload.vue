@@ -9,12 +9,15 @@ const props = defineProps<{ step: StepKey; rowId: number | null; label?: string 
 const { uuid, payload, readonly, setDocuments } = useWizard();
 const config = computed(() => ROW_DOCUMENTS[props.step]);
 const type = computed(() => payload.value.document_types.find((t) => t.code === config.value?.type));
+const requirement = computed(() => payload.value.requirements.find((r) => r.document_type === config.value?.type));
 </script>
 
 <template>
     <template v-if="config && type">
         <FileUploader v-if="rowId" :application-uuid="uuid" :type="type" :documents="payload.documents"
             :documentable-type="config.documentable" :documentable-id="rowId" :label="label ?? type.name"
+            :required="!!requirement?.is_mandatory" :undertaking="!!requirement?.accepts_undertaking"
+            :undertaking-text="payload.options.undertaking_text" :original-due-stage="payload.options.original_due_stage"
             :disabled="readonly" @changed="setDocuments" />
         <div v-else class="small text-muted border rounded px-2 py-2 bg-light">
             <i class="bi bi-info-circle me-1"></i>Save the step to attach documents to this row.

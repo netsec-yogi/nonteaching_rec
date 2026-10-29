@@ -52,6 +52,7 @@ class DocumentTypeController extends Controller
             'max_kb' => ['nullable', 'integer', 'between:20,20480'],
             'step' => ['nullable', Rule::in(self::STEPS)],
             'is_mandatory' => ['boolean'],
+            'accepts_undertaking' => ['boolean'],
             'is_active' => ['boolean'],
         ]);
     }

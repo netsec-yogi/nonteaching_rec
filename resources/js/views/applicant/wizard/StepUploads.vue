@@ -34,6 +34,7 @@ const slots = computed(() => payload.value.document_types
         return {
             type: t,
             required: !!req?.is_mandatory || props.forceRequired.includes(t.code),
+            undertaking: !!req?.accepts_undertaking,
             instructions: req?.instructions ?? t.description ?? null,
         };
     })
@@ -41,6 +42,9 @@ const slots = computed(() => payload.value.document_types
     .sort((a, b) => Number(b.required) - Number(a.required)));
 
 const rowRequirement = computed(() => (rowType.value ? requirement(rowType.value) : undefined));
+/** The IMPORTANT notice appears wherever a document on this step may be replaced by a signed undertaking. */
+const undertakingOffered = computed(() => slots.value.some((s) => s.undertaking) || !!rowRequirement.value?.accepts_undertaking);
+const options = computed(() => payload.value.options);
 </script>
 
 <template>
@@ -48,6 +52,11 @@ const rowRequirement = computed(() => (rowType.value ? requirement(rowType.value
         <div class="card-header"><i class="bi bi-paperclip me-1"></i>{{ title }}</div>
         <div class="card-body py-2">
             <slot name="intro" />
+            <div v-if="undertakingOffered" class="alert alert-info small my-2" role="note">
+                <strong>IMPORTANT: If a candidate is unable to upload a required document at the time of filling out the application form, a declaration may be uploaded in place of the original document, stating:</strong>
+                <div class="mt-1 fst-italic">"{{ options.undertaking_text }}"</div>
+                <div class="mt-1 text-muted">This is accepted only for the documents below that offer "Upload Signed Undertaking Instead".</div>
+            </div>
             <div v-if="rowRequirement" class="alert py-2 small mb-2" :class="rowRequirement.satisfied ? 'alert-success' : 'alert-warning'">
                 <i class="bi me-1" :class="rowRequirement.satisfied ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
                 <strong>{{ rowRequirement.is_mandatory ? 'Required' : 'Optional' }}: {{ rowRequirement.name }}.</strong>
@@ -56,7 +65,9 @@ const rowRequirement = computed(() => (rowType.value ? requirement(rowType.value
             </div>
             <FileUploader v-for="s in slots" :key="s.type.code" :application-uuid="uuid" :type="s.type"
                 :documents="payload.documents" :required="s.required" :instructions="s.instructions"
-                :single="s.type.code === 'photo'" :disabled="readonly" @changed="setDocuments" />
+                :single="s.type.code === 'photo' || s.type.code === 'signature'" :preview="s.type.code === 'photo' || s.type.code === 'signature'"
+                :undertaking="s.undertaking" :undertaking-text="options.undertaking_text" :original-due-stage="options.original_due_stage"
+                :disabled="readonly" @changed="setDocuments" />
             <p v-if="!slots.length && !rowRequirement && !$slots.intro" class="text-muted small mb-0">No documents for this section.</p>
         </div>
     </div>

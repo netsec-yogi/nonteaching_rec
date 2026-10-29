@@ -121,6 +121,7 @@ class ApplicationFormService
 
         $section = $this->sections->get($key);
         $this->assertSectionApplies($application, $key);
+        $input = $section->prepare($input);
         $validator = Validator::make($input, $section->rules($application), $section->messages(), $section->attributes());
         if ($after = $section->after($application)) {
             $validator->after($after);
@@ -234,6 +235,7 @@ class ApplicationFormService
                 'name' => $r->documentType->name,
                 'step' => $r->documentType->step ?? 'checklist',
                 'is_mandatory' => $r->isMandatory(),
+                'accepts_undertaking' => $r->acceptsUndertaking(),
                 'instructions' => $r->instructions,
                 'satisfied' => $application->documents->contains('document_type_id', $r->document_type_id),
             ])->values()->all(),
@@ -245,6 +247,8 @@ class ApplicationFormService
                 'marital_statuses' => config('recruitment.marital_statuses'),
                 'salutations' => config('recruitment.salutations'),
                 'qualification_levels' => Qualification::LEVELS,
+                'undertaking_text' => ApplicationDocument::UNDERTAKING_TEXT,
+                'original_due_stage' => ApplicationDocument::ORIGINAL_DUE_STAGE,
                 'employment_types' => Employment::TYPES,
                 'training_types' => Training::TYPES,
                 'declaration_questions' => collect(Sections\DeclarationsSection::QUESTIONS)->map(fn ($q) => ['question' => $q[0], 'details_when' => $q[1]]),
@@ -269,6 +273,8 @@ class ApplicationFormService
             'documentable_type' => $d->documentable_type,
             'documentable_id' => $d->documentable_id,
             'verification_status' => $d->verification_status,
+            'upload_type' => $d->upload_type,
+            'original_status' => $d->original_status,
             'is_frozen' => $d->is_frozen,
             'uploaded_at' => $d->created_at?->toIso8601String(),
         ];

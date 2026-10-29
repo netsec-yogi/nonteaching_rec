@@ -29,6 +29,7 @@ final class Permissions
         'applications.correspond' => ['Send clarification requests to candidates', 'applications', false, [Role::RECRUITMENT_ADMIN, Role::SCRUTINY_USER]],
         'applications.history' => ['View application history and audit trail', 'applications', false, [Role::RECRUITMENT_ADMIN]],
 
+        'identity.view' => ['View full PAN / Aadhaar numbers (masked otherwise; each view is logged)', 'documents', true, []],
         'documents.download' => ['Open and download applicant documents', 'documents', true, [Role::RECRUITMENT_ADMIN, Role::SCRUTINY_USER, Role::COMMITTEE_MEMBER]],
 
         'referees.status' => ['View referee invitation and recommendation status', 'referees', false, [Role::RECRUITMENT_ADMIN, Role::SCRUTINY_USER, Role::COMMITTEE_MEMBER]],

@@ -8,6 +8,15 @@ return [
     // Item 32 addresses the applicant as Dr/Mr/Mrs/Ms.
     'salutations' => ['Dr', 'Mr', 'Mrs', 'Ms'],
 
+    // Dimension limits (pixels) for image documents, by document type code. The size limit is the
+    // document type's own (Admin → Document Types).
+    'image_dimensions' => [
+        'signature' => [
+            'min_width' => (int) env('RECRUITMENT_SIGNATURE_MIN_WIDTH', 140), 'min_height' => (int) env('RECRUITMENT_SIGNATURE_MIN_HEIGHT', 40),
+            'max_width' => (int) env('RECRUITMENT_SIGNATURE_MAX_WIDTH', 2000), 'max_height' => (int) env('RECRUITMENT_SIGNATURE_MAX_HEIGHT', 1000),
+        ],
+    ],
+
     // Public reference files for applicants (blank formats only — never applicant documents). Paths are
     // under public/, or full URLs; override per installation without changing code.
     'reference_documents' => [

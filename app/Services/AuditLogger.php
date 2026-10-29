@@ -17,7 +17,7 @@ use Throwable;
 class AuditLogger
 {
     /** Attributes never copied into an audit entry. */
-    private const REDACT = ['password', 'remember_token', 'token_hash', 'verification_code_hash', 'path', 'disk', 'stored_name'];
+    private const REDACT = ['password', 'remember_token', 'token_hash', 'verification_code_hash', 'path', 'disk', 'stored_name', 'pan_number', 'aadhaar_number'];
 
     public function record(
         string $action,

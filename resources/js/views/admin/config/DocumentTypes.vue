@@ -17,7 +17,7 @@ const types = ref<DocumentType[]>([]);
 const steps = ref<string[]>([]);
 const q = ref('');
 const editing = ref<DocumentType | null | undefined>(undefined);
-const f = reactive({ code: '', name: '', description: '', allowed_mimes: ['application/pdf'] as string[], max_kb: 2048 as number | string, step: null as string | null, is_mandatory: true, is_active: true });
+const f = reactive({ code: '', name: '', description: '', allowed_mimes: ['application/pdf'] as string[], max_kb: 2048 as number | string, step: null as string | null, is_mandatory: true, accepts_undertaking: false, is_active: true });
 
 async function load() {
     loading.value = true;
@@ -35,8 +35,8 @@ onMounted(async () => {
 function open(t: DocumentType | null) {
     form.clear();
     Object.assign(f, t
-        ? { code: t.code, name: t.name, description: t.description ?? '', allowed_mimes: [...t.allowed_mimes], max_kb: t.max_kb, step: t.step, is_mandatory: t.is_mandatory, is_active: t.is_active }
-        : { code: '', name: '', description: '', allowed_mimes: ['application/pdf'], max_kb: defaultKb.value, step: null, is_mandatory: true, is_active: true });
+        ? { code: t.code, name: t.name, description: t.description ?? '', allowed_mimes: [...t.allowed_mimes], max_kb: t.max_kb, step: t.step, is_mandatory: t.is_mandatory, accepts_undertaking: t.accepts_undertaking, is_active: t.is_active }
+        : { code: '', name: '', description: '', allowed_mimes: ['application/pdf'], max_kb: defaultKb.value, step: null, is_mandatory: true, accepts_undertaking: false, is_active: true });
     editing.value = t;
 }
 
@@ -63,7 +63,7 @@ const match = (t: DocumentType) => !q.value || `${t.code} ${t.name}`.toLowerCase
             <div class="card">
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead class="table-light"><tr><th>Name</th><th>Code</th><th>Formats</th><th>Max size</th><th>Wizard step</th><th>Requirement</th><th>Status</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+                        <thead class="table-light"><tr><th>Name</th><th>Code</th><th>Formats</th><th>Max size</th><th>Wizard step</th><th>Requirement</th><th>Undertaking</th><th>Status</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
                         <tbody>
                             <tr v-for="t in types.filter(match)" :key="t.id" :class="{ 'text-muted': !t.is_active }">
                                 <td><div class="fw-semibold small">{{ t.name }}</div><div v-if="t.description" class="small text-muted">{{ t.description }}</div></td>
@@ -72,6 +72,7 @@ const match = (t: DocumentType) => !q.value || `${t.code} ${t.name}`.toLowerCase
                                 <td class="small text-nowrap">{{ size(t.max_kb) }}</td>
                                 <td class="small">{{ humanize(t.step) }}</td>
                                 <td><span class="badge" :class="t.is_mandatory ? 'text-bg-primary' : 'text-bg-light border'">{{ t.is_mandatory ? 'Mandatory' : 'Non-Mandatory' }}</span></td>
+                                <td class="small">{{ t.accepts_undertaking ? 'Accepted' : 'Not accepted' }}</td>
                                 <td><span class="badge" :class="t.is_active ? 'text-bg-success' : 'text-bg-secondary'">{{ t.is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end"><button type="button" class="btn btn-sm btn-outline-primary" @click="open(t)"><i class="bi bi-pencil"></i> Edit</button></td>
                             </tr>
@@ -129,6 +130,14 @@ const match = (t: DocumentType) => !q.value || `${t.code} ${t.name}`.toLowerCase
             <div id="dt-mandatory-help" class="form-text mb-3">
                 The default for every advertisement that requires this document: when on, the candidate cannot submit without it wherever the
                 advertisement's condition (category, disability, employment…) applies. An advertisement can override it for its own requirement.
+            </div>
+            <div class="form-check form-switch mb-1">
+                <input id="dt-undertaking" v-model="f.accepts_undertaking" class="form-check-input" type="checkbox" role="switch" aria-describedby="dt-undertaking-help">
+                <label class="form-check-label fw-semibold" for="dt-undertaking">Accept a signed undertaking in place of this document</label>
+            </div>
+            <div id="dt-undertaking-help" class="form-text mb-3">
+                A candidate who cannot provide the document yet may upload an undertaking to produce it before / at the interview or document
+                verification. The original stays outstanding until staff record it. Advertisements can override this for their own requirement.
             </div>
             <div class="form-check">
                 <input id="dt-active" v-model="f.is_active" class="form-check-input" type="checkbox">

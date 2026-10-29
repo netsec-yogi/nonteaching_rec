@@ -58,6 +58,7 @@ class AdvertisementRequest extends FormRequest
             'referee_extra_verification' => ['boolean'],
             'referee_form_template_id' => ['nullable', 'exists:referee_form_templates,id'],
             'endorsement_mode' => ['required', Rule::in(Advertisement::ENDORSEMENT_MODES)],
+            'identity_number_requirement' => ['sometimes', Rule::in(array_keys(Advertisement::IDENTITY_REQUIREMENTS))],
             'endorsement_instructions' => ['nullable', 'string', 'max:20000'],
             'committee_evaluation_mode' => ['required', Rule::in(['individual', 'collective'])],
             'evaluation_form_template_id' => ['nullable', 'exists:evaluation_form_templates,id'],

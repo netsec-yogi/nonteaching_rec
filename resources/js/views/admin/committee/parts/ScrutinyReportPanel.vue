@@ -38,6 +38,13 @@ defineProps<{ report: ScrutinyReport }>();
             </div>
         </div>
 
+        <div v-if="report.originals_awaited?.length" class="card section-card border-warning">
+            <div class="card-header">Originals to be produced (signed undertakings)</div>
+            <div class="card-body small">
+                <ul class="mb-0"><li v-for="(o, i) in report.originals_awaited" :key="i">{{ o }}</li></ul>
+            </div>
+        </div>
+
         <div class="card section-card">
             <div class="card-header">Checklist verification</div>
             <div class="table-responsive">

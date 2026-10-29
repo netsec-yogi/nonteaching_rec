@@ -24,13 +24,14 @@ export interface AdDocument { id: number; title: string; original_name: string; 
 
 export interface DocumentType {
     id: number; code: string; name: string; description: string | null; allowed_mimes: string[]; max_kb: number;
-    step: string | null; is_mandatory: boolean; is_active: boolean;
+    step: string | null; is_mandatory: boolean; accepts_undertaking: boolean; is_active: boolean;
 }
 
 export interface Requirement {
     id: number; post_id: number | null; document_type_id: number; condition: string;
     /** null = follow the document type's default; effective_mandatory is the resulting value. */
     is_mandatory: boolean | null; effective_mandatory: boolean;
+    accepts_undertaking: boolean | null; effective_accepts_undertaking: boolean;
     instructions: string | null; document_type?: DocumentType; post?: { id: number; code: string; name?: string } | null;
 }
 
@@ -63,6 +64,7 @@ export interface AdvertisementDetail {
     referee_deadline_days: number; referee_reminder_days: number[] | null; referee_final_reminder_days_before: number | null;
     referee_max_reminders: number; referee_extra_verification: boolean; referee_form_template_id: number | null;
     endorsement_mode: string; endorsement_instructions: string | null; committee_evaluation_mode: string;
+    identity_number_requirement?: string;
     evaluation_form_template_id: number | null; allow_withdrawal: boolean; allow_clarification_uploads: boolean;
     retention_years: number | null; contact_email: string | null; contact_phone: string | null;
     published_at: string | null; archived_at: string | null;
@@ -98,6 +100,10 @@ export const ENDORSEMENT_MODES: Record<string, string> = {
     not_applicable: 'Not applicable',
     optional: 'Optional',
     required_for_in_service: 'Required for in-service candidates',
+};
+
+export const IDENTITY_REQUIREMENTS: Record<string, string> = {
+    optional: 'Optional (neither required)', pan: 'PAN required', aadhaar: 'Aadhaar required', pan_or_aadhaar: 'PAN or Aadhaar required',
 };
 
 export const PAYMENT_METHODS: Record<string, string> = { neft: 'NEFT / RTGS', upi: 'UPI / bank QR code', demand_draft: 'Demand Draft', online: 'Online (transaction reference recorded; no gateway)' };

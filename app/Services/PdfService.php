@@ -64,7 +64,7 @@ class PdfService
             return $version;
         }
         $snapshot = $version->snapshot;
-        $binary = $this->render('pdf.application', ['s' => $snapshot, 'version' => $version, 'photo' => $this->photoDataUri($version->application)]);
+        $binary = $this->render('pdf.application', ['s' => $snapshot, 'version' => $version, 'photo' => $this->photoDataUri($version->application), 'signature' => $this->signatureImage($version->application)]);
         $path = 'applications/'.$snapshot['meta']['uuid'].'/application-v'.$version->version.'.pdf';
         Storage::disk($this->disk())->put($path, $binary);
 
@@ -78,7 +78,7 @@ class PdfService
     {
         $application = Application::where('uuid', $snapshot['meta']['uuid'] ?? null)->first();
 
-        return $this->render('pdf.application', ['s' => $snapshot, 'version' => null, 'draft' => true, 'photo' => $this->photoDataUri($application)]);
+        return $this->render('pdf.application', ['s' => $snapshot, 'version' => null, 'draft' => true, 'photo' => $this->photoDataUri($application), 'signature' => $this->signatureImage($application)]);
     }
 
     /** The candidate's photograph as a data URI (dompdf runs with remote access off), or null. */
@@ -90,6 +90,29 @@ class PdfService
         }
 
         return 'data:'.$photo->mime.';base64,'.base64_encode(Storage::disk($photo->disk)->get($photo->path));
+    }
+
+    /**
+     * The candidate's signature as a data URI with a printed size that keeps its proportions inside a
+     * 50 mm × 18 mm box (dompdf ignores object-fit, so the size is computed here), or null.
+     *
+     * @return array{uri: string, width_mm: float, height_mm: float}|null
+     */
+    private function signatureImage(?Application $application): ?array
+    {
+        $doc = $application?->documents()->where('upload_type', 'original')
+            ->whereHas('documentType', fn ($q) => $q->where('code', 'signature'))->latest('id')->first();
+        if (! $doc || ! Storage::disk($doc->disk)->exists($doc->path)) {
+            return null;
+        }
+        $bytes = Storage::disk($doc->disk)->get($doc->path);
+        $size = @getimagesizefromstring($bytes);
+        if (! $size || ! $size[0] || ! $size[1]) {
+            return null;
+        }
+        $scale = min(50 / $size[0], 18 / $size[1]);
+
+        return ['uri' => 'data:'.$doc->mime.';base64,'.base64_encode($bytes), 'width_mm' => round($size[0] * $scale, 2), 'height_mm' => round($size[1] * $scale, 2)];
     }
 
     public function acknowledgment(Application $application): string

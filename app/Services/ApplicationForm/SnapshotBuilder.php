@@ -10,6 +10,7 @@ use App\Models\Training;
 use App\Services\ApplicationForm\Sections\DeclarationsSection;
 use App\Services\RequirementResolver;
 use App\Services\SettingsService;
+use App\Support\IdentityNumbers;
 
 /**
  * A complete, human-readable rendering of an application in the order of the
@@ -77,6 +78,9 @@ class SnapshotBuilder
                 'disability_type' => $p?->disability_type,
                 'disability_percentage' => $p?->disability_percentage,
                 'nearest_railway_station' => $p?->nearest_railway_station,
+                // Never the full numbers: the snapshot feeds the PDF, previews and every staff view.
+                'pan_masked' => IdentityNumbers::maskPan($p?->pan_number),
+                'aadhaar_masked' => IdentityNumbers::maskAadhaar($p?->aadhaar_number),
                 'correspondence_address' => $a->address('correspondence')?->formatted(),
                 'permanent_address' => $a->address('permanent')?->formatted(),
                 'is_ex_serviceman' => $yesNo($p?->is_ex_serviceman),
@@ -171,6 +175,7 @@ class SnapshotBuilder
                 'uuid' => $d->uuid,
                 'type' => $d->documentType?->name,
                 'label' => $d->label,
+                'upload_type' => $d->upload_type,
                 'original_name' => $d->original_name,
                 'size' => $d->size,
                 'sha256' => $d->sha256,

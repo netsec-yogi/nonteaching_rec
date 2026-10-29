@@ -12,6 +12,7 @@ const props = defineProps<{ form: PersonalData }>();
 const { payload, errors } = useWizard();
 const opts = computed(() => payload.value.options);
 const inv = (k: string) => ({ 'is-invalid': !!errors[k] });
+const idNeed = computed(() => props.form.identity_number_requirement ?? 'optional');
 const salutations = computed<string[]>(() => (opts.value as { salutations?: string[] }).salutations ?? ['Dr', 'Mr', 'Mrs', 'Ms']);
 
 function onName(e: Event) {
@@ -154,6 +155,23 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
                         <input id="p-rail" v-model="form.nearest_railway_station" class="form-control" :class="inv('nearest_railway_station')" maxlength="150">
                         <FieldError :errors="errors" name="nearest_railway_station" />
                     </div>
+                    <div class="col-md-6 col-xl-3">
+                        <label class="form-label" :class="{ required: idNeed === 'pan' }" for="p-pan">PAN Card Number ({{ idNeed === 'pan' ? 'Required' : idNeed === 'pan_or_aadhaar' ? 'PAN or Aadhaar required' : 'Optional' }})</label>
+                        <input id="p-pan" v-model.trim="form.pan_number" class="form-control font-monospace text-uppercase" :class="inv('pan_number')"
+                            maxlength="10" autocomplete="off" spellcheck="false" placeholder="ABCDE1234F" aria-describedby="p-id-help"
+                            @input="form.pan_number = (form.pan_number ?? '').toUpperCase()">
+                        <FieldError :errors="errors" name="pan_number" />
+                    </div>
+                    <div class="col-md-6 col-xl-3">
+                        <label class="form-label" :class="{ required: idNeed === 'aadhaar' }" for="p-aadhaar">Aadhaar Card Number ({{ idNeed === 'aadhaar' ? 'Required' : idNeed === 'pan_or_aadhaar' ? 'PAN or Aadhaar required' : 'Optional' }})</label>
+                        <input id="p-aadhaar" v-model.trim="form.aadhaar_number" class="form-control font-monospace" :class="inv('aadhaar_number')"
+                            inputmode="numeric" maxlength="14" autocomplete="off" placeholder="12 digits" aria-describedby="p-id-help">
+                        <FieldError :errors="errors" name="aadhaar_number" />
+                    </div>
+                    <div id="p-id-help" class="col-12 form-text mt-1">
+                        <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Used only for this recruitment. Stored encrypted and shown masked
+                        (only the last four characters) to staff; checked for format only, not verified with the Income Tax Department or UIDAI.
+                    </div>
                 </div>
             </div>
         </div>
@@ -174,6 +192,6 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
             </div>
         </div>
 
-        <StepUploads step="personal" :hide="hideUploads" title="Photograph and documents" />
+        <StepUploads step="personal" :hide="hideUploads" title="Photograph, signature and documents" />
     </div>
 </template>

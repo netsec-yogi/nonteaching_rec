@@ -35,12 +35,21 @@ class Advertisement extends BaseModel
 
     public const ENDORSEMENT_MODES = ['not_applicable', 'optional', 'required_for_in_service'];
 
+    /** Whether the candidate must give a PAN / Aadhaar number (both fields are optional by default). */
+    public const IDENTITY_REQUIREMENTS = [
+        'optional' => 'Optional (neither required)',
+        'pan' => 'PAN required',
+        'aadhaar' => 'Aadhaar required',
+        'pan_or_aadhaar' => 'PAN or Aadhaar required',
+    ];
+
     protected $attributes = [
         'status' => self::DRAFT,
         'referees_required' => 3,
         'referee_deadline_days' => 14,
         'referee_max_reminders' => 3,
         'endorsement_mode' => 'required_for_in_service',
+        'identity_number_requirement' => 'optional',
         'committee_evaluation_mode' => 'individual',
     ];
 

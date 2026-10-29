@@ -90,9 +90,10 @@ export interface ApplicationProfile {
 }
 
 export interface RequiredDocument {
-    document_type: string; name: string; mandatory: boolean; condition: string; uploaded: number; missing_rows: number | null;
-    status: 'missing' | 'not_provided' | 'verified' | 'rejected' | 'pending' | 'not_applicable';
-    documents: { id: number; uuid: string; name: string; verification_status: string; remarks: string | null }[];
+    document_type: string; name: string; mandatory: boolean; accepts_undertaking: boolean; condition: string; uploaded: number; undertakings: number;
+    original_required: boolean; original_due_stage: string | null; missing_rows: number | null;
+    status: 'missing' | 'not_provided' | 'verified' | 'rejected' | 'pending' | 'not_applicable' | 'undertaking';
+    documents: { id: number; uuid: string; name: string; upload_type: string; verification_status: string; remarks: string | null; original_status: string | null; original_received_at: string | null }[];
 }
 
 export interface ScrutinyContext {
@@ -113,6 +114,7 @@ export interface ScrutinyReport {
     eligibility: EligibilityRow[];
     observations: { section: string | null; text: string; deficiency: boolean; by: string | null; at: string | null; resolved_at: string | null }[];
     deficiencies: string[];
+    originals_awaited?: string[];
     clarifications: { subject: string; issued_at: string | null; due_at: string | null; status: string; resolution: string | null }[];
     reviews: { stage: string; by: string | null; completeness: string | null; recommendation: string | null; decision: string | null; reasons: string | null; submitted_at: string | null }[];
 }

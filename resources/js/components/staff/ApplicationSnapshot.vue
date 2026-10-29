@@ -49,6 +49,7 @@ const declLabel: Record<string, string> = { sec26a: '26 (a)', sec26b: '26 (b)', 
                         <tr><th>12. Category</th><td>{{ dash(p.category) }}</td></tr>
                         <tr><th>13. Person with disability</th><td>{{ dash(p.is_pwd) }}<span v-if="p.is_pwd === 'Yes'"> — {{ dash(p.disability_type) }}{{ p.disability_percentage ? ` (${p.disability_percentage}%)` : '' }}</span></td></tr>
                         <tr><th>14. Nearest railway station</th><td>{{ dash(p.nearest_railway_station) }}</td></tr>
+                        <tr v-if="p.pan_masked || p.aadhaar_masked"><th>PAN / Aadhaar (masked)</th><td class="font-monospace">{{ [p.pan_masked ? `PAN ${p.pan_masked}` : null, p.aadhaar_masked ? `Aadhaar ${p.aadhaar_masked}` : null].filter(Boolean).join(' · ') }}</td></tr>
                         <tr><th>15. Correspondence address</th><td>{{ dash(p.correspondence_address) }}</td></tr>
                         <tr><th>16. Permanent address</th><td>{{ dash(p.permanent_address) }}</td></tr>
                         <tr><th>17. Ex-serviceman</th><td>{{ dash(p.is_ex_serviceman) }}<span v-if="p.is_ex_serviceman === 'Yes'"> — {{ dash(p.ex_serviceman_category) }}. {{ p.ex_serviceman_details }}</span></td></tr>

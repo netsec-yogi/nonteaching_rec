@@ -46,8 +46,10 @@ class DocumentService
         ?Model $documentable = null,
         ?string $label = null,
         ?int $clarificationResponseId = null,
+        string $uploadType = ApplicationDocument::ORIGINAL,
     ): ApplicationDocument {
-        $this->assertAcceptable($type, $file);
+        $undertaking = $uploadType === ApplicationDocument::UNDERTAKING;
+        $this->assertAcceptable($type, $file, $undertaking);
 
         $mime = $this->detectMime($file);
         $extension = match ($mime) {
@@ -76,10 +78,15 @@ class DocumentService
             'uploaded_by' => $uploader->id,
             'verification_status' => 'pending',
             'is_frozen' => false,
+            'upload_type' => $undertaking ? ApplicationDocument::UNDERTAKING : ApplicationDocument::ORIGINAL,
+            // An undertaking never stands for the original: the original stays awaited until staff record it.
+            'original_status' => $undertaking ? 'awaited' : null,
+            'original_due_stage' => $undertaking ? ApplicationDocument::ORIGINAL_DUE_STAGE : null,
         ]);
 
         $this->audit->record('document.uploaded', $document, [], [
             'document_type' => $type->code,
+            'upload_type' => $document->upload_type,
             'original_name' => $document->original_name,
             'size' => $document->size,
         ], application: $application);
@@ -135,8 +142,12 @@ class DocumentService
 
     // ------------------------------------------------------------ checks
 
-    private function assertAcceptable(DocumentType $type, UploadedFile $file): void
+    /** A signed undertaking may be a scan or a PDF, whatever the original document's formats. */
+    public const UNDERTAKING_MIMES = ['application/pdf', 'image/jpeg', 'image/png'];
+
+    private function assertAcceptable(DocumentType $type, UploadedFile $file, bool $undertaking = false): void
     {
+        $allowed = $undertaking ? self::UNDERTAKING_MIMES : $type->allowed_mimes;
         if (! $file->isValid()) {
             $this->fail('The file could not be uploaded. Please try again.');
         }
@@ -150,8 +161,8 @@ class DocumentService
         }
 
         $mime = $this->detectMime($file);
-        if (! in_array($mime, $type->allowed_mimes, true)) {
-            $this->fail('This document must be one of: '.$this->describeMimes($type->allowed_mimes).'.');
+        if (! in_array($mime, $allowed, true)) {
+            $this->fail('This document must be one of: '.$this->describeMimes($allowed).'.');
         }
 
         $head = (string) file_get_contents($file->getRealPath(), false, null, 0, 16);
@@ -162,6 +173,21 @@ class DocumentService
 
         if ($mime === 'application/pdf') {
             $this->assertNoActivePdfContent($file);
+        }
+
+        $limits = config("recruitment.image_dimensions.{$type->code}");
+        if ($limits && ! $undertaking && str_starts_with($mime, 'image/')) {
+            $size = @getimagesize($file->getRealPath());
+            if (! $size) {
+                $this->fail('The image could not be read.');
+            }
+            [$w, $h] = $size;
+            if ($w < $limits['min_width'] || $h < $limits['min_height']) {
+                $this->fail("The image is too small: it must be at least {$limits['min_width']} × {$limits['min_height']} pixels.");
+            }
+            if ($w > $limits['max_width'] || $h > $limits['max_height']) {
+                $this->fail("The image is too large: it must be at most {$limits['max_width']} × {$limits['max_height']} pixels.");
+            }
         }
 
         $this->scanForMalware($file);

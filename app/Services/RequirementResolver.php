@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Application;
+use App\Models\ApplicationDocument;
 use App\Models\ChecklistItem;
 use App\Models\DocumentRequirement;
 use Illuminate\Support\Collection;
@@ -47,19 +48,34 @@ class RequirementResolver
     /** Requirements that are mandatory (the requirement's override, else the document type's default) and have no upload yet. */
     public function missingDocuments(Application $application): Collection
     {
-        $documents = $application->documents()->get(['document_type_id', 'documentable_type', 'documentable_id']);
-        $uploadedTypeIds = $documents->pluck('document_type_id')->unique();
+        $documents = $application->documents()->get(['document_type_id', 'documentable_type', 'documentable_id', 'upload_type']);
 
         return $this->documentRequirements($application)
-            ->filter(function (DocumentRequirement $r) use ($application, $documents, $uploadedTypeIds) {
+            ->filter(function (DocumentRequirement $r) use ($application, $documents) {
                 if (! $r->isMandatory()) {
                     return false;
                 }
                 $rows = $this->rowsWithoutDocument($r, $application, $documents);
 
-                return $rows === null ? ! $uploadedTypeIds->contains($r->document_type_id) : $rows->isNotEmpty();
+                return $rows === null ? $this->usable($r, $documents)->where('document_type_id', $r->document_type_id)->isEmpty() : $rows->isNotEmpty();
             })
             ->values();
+    }
+
+    /**
+     * Uploads that count towards a requirement: originals, plus signed undertakings where the
+     * requirement accepts them. An undertaking never satisfies a document that does not.
+     */
+    private function usable(DocumentRequirement $r, Collection $documents): Collection
+    {
+        return $r->acceptsUndertaking() ? $documents : $documents->where('upload_type', '!=', ApplicationDocument::UNDERTAKING);
+    }
+
+    /** Whether the candidate may upload a signed undertaking in place of this document type. */
+    public function undertakingAllowed(Application $application, int $documentTypeId): bool
+    {
+        return $this->documentRequirements($application)
+            ->contains(fn (DocumentRequirement $r) => $r->document_type_id === $documentTypeId && $r->acceptsUndertaking());
     }
 
     /**
@@ -73,8 +89,8 @@ class RequirementResolver
             return null;
         }
         [$relation, $morph] = $map;
-        $documents ??= $application->documents()->get(['document_type_id', 'documentable_type', 'documentable_id']);
-        $covered = $documents->where('document_type_id', $r->document_type_id)->where('documentable_type', $morph)->pluck('documentable_id');
+        $documents ??= $application->documents()->get(['document_type_id', 'documentable_type', 'documentable_id', 'upload_type']);
+        $covered = $this->usable($r, $documents)->where('document_type_id', $r->document_type_id)->where('documentable_type', $morph)->pluck('documentable_id');
 
         return $application->$relation()->get()->reject(fn ($row) => $covered->contains($row->id))->values();
     }

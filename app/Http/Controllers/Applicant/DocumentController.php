@@ -8,17 +8,19 @@ use App\Models\ApplicationDocument;
 use App\Models\DocumentType;
 use App\Services\ApplicationForm\ApplicationFormService;
 use App\Services\DocumentService;
+use App\Services\RequirementResolver;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class DocumentController extends Controller
 {
     /** Repeatable rows a document may be attached to. */
     private const ATTACHABLE = ['qualification', 'employment', 'merit_record', 'training', 'membership'];
 
-    public function __construct(private DocumentService $documents, private ApplicationFormService $form) {}
+    public function __construct(private DocumentService $documents, private ApplicationFormService $form, private RequirementResolver $requirements) {}
 
     public function store(Request $request, Application $application): JsonResponse
     {
@@ -30,7 +32,9 @@ class DocumentController extends Controller
             'documentable_id' => ['nullable', 'required_with:documentable_type', 'integer'],
             'label' => ['nullable', 'string', 'max:250'],
             'replace_uuid' => ['nullable', 'uuid'],
+            'upload_type' => ['nullable', Rule::in([ApplicationDocument::ORIGINAL, ApplicationDocument::UNDERTAKING])],
         ]);
+        $uploadType = $data['upload_type'] ?? ApplicationDocument::ORIGINAL;
 
         $documentable = null;
         if (! empty($data['documentable_type'])) {
@@ -42,7 +46,10 @@ class DocumentController extends Controller
         // After a reopening only the sections opened for correction may change — uploads included.
         $this->form->assertEditable($application, $type->step);
         $this->form->assertSectionApplies($application, $type->step);
-        $document = $this->documents->store($application, $type, $request->file('file'), $request->user(), $documentable, $data['label'] ?? null);
+        if ($uploadType === ApplicationDocument::UNDERTAKING && ! $this->requirements->undertakingAllowed($application, $type->id)) {
+            throw ValidationException::withMessages(['upload_type' => "A signed undertaking is not accepted in place of the {$type->name} for this advertisement. Upload the original document."]);
+        }
+        $document = $this->documents->store($application, $type, $request->file('file'), $request->user(), $documentable, $data['label'] ?? null, uploadType: $uploadType);
 
         // Replacing a single-file slot (e.g. the photograph) removes the earlier draft upload.
         if (! empty($data['replace_uuid'])) {

@@ -132,6 +132,12 @@ async function submitAction() {
     if (res) { action.value = null; load(true); }
 }
 
+// ------------------------------------------------------------ identity numbers (masked unless revealed; reveals are logged)
+const identityFull = ref<{ pan: string | null; aadhaar: string | null } | null>(null);
+async function revealIdentity() {
+    try { identityFull.value = (await api.get(`${base.value}/identity`)).data; } catch (e) { toast.error(toApiError(e).message); }
+}
+
 // ------------------------------------------------------------ fee and endorsement verification
 const feeForm = reactive({ status: 'verified', remarks: '' });
 const fee = useForm();
@@ -244,6 +250,15 @@ const auditActor = (a: AuditEntry) => a.user?.name ?? a.actor_label ?? humanize(
                                 <tr><th>First submitted</th><td>{{ formatDateTime(app.first_submitted_at) }}</td></tr>
                                 <tr><th>Last submitted</th><td>{{ formatDateTime(app.submitted_at) }}</td></tr>
                                 <tr v-if="profile.payment"><th>Fee</th><td>{{ profile.payment.method === 'exempt' ? 'Exempt' : formatMoney(profile.payment.amount) }}</td></tr>
+                                <tr v-if="profile.identity.pan || profile.identity.aadhaar">
+                                    <th>PAN / Aadhaar</th>
+                                    <td>
+                                        <span class="font-monospace">{{ [identityFull?.pan ?? profile.identity.pan, identityFull?.aadhaar ?? profile.identity.aadhaar].filter(Boolean).join(' · ') }}</span>
+                                        <button v-if="profile.identity.can_reveal && !identityFull" type="button" class="btn btn-link btn-sm py-0" @click="revealIdentity">Show full numbers</button>
+                                        <button v-else-if="identityFull" type="button" class="btn btn-link btn-sm py-0" @click="identityFull = null">Hide</button>
+                                        <div class="small text-muted">{{ identityFull ? 'Shown in full; this view has been logged.' : 'Masked — only the last four characters are shown.' }}</div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>

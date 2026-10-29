@@ -6,7 +6,7 @@ import type { RequiredDocument } from './types';
 
 const props = defineProps<{ documents: RequiredDocument[] }>();
 const LABELS: Record<string, string> = {
-    missing: 'Missing', not_provided: 'Not provided', verified: 'Verified', rejected: 'Rejected', pending: 'Pending verification', not_applicable: 'Not applicable',
+    missing: 'Missing', not_provided: 'Not provided', undertaking: 'Undertaking — original required', verified: 'Verified', rejected: 'Rejected', pending: 'Pending verification', not_applicable: 'Not applicable',
 };
 const missing = computed(() => props.documents.filter((d) => d.status === 'missing').length);
 </script>
@@ -19,16 +19,18 @@ const missing = computed(() => props.documents.filter((d) => d.status === 'missi
         </div>
         <div class="table-responsive">
             <table class="table table-sm align-middle mb-0 table-cards">
-                <thead class="table-light"><tr><th>Document</th><th>Requirement</th><th>Applies when</th><th>Uploaded</th><th>Status</th></tr></thead>
+                <thead class="table-light"><tr><th>Document</th><th>Requirement</th><th>Applies when</th><th>Uploaded</th><th>Original</th><th>Status</th></tr></thead>
                 <tbody>
                     <tr v-for="d in documents" :key="d.document_type" :class="{ 'table-danger': d.status === 'missing' }">
                         <td class="small fw-semibold">{{ d.name }}</td>
                         <td class="small"><span class="badge" :class="d.mandatory ? 'text-bg-primary' : 'text-bg-light border'">{{ d.mandatory ? 'Mandatory' : 'Optional' }}</span></td>
                         <td class="small text-muted">{{ d.condition }}</td>
-                        <td class="small">{{ d.uploaded }}<span v-if="d.missing_rows" class="text-danger"> · {{ d.missing_rows }} entr{{ d.missing_rows === 1 ? 'y' : 'ies' }} without one</span></td>
-                        <td><StatusBadge :value="d.status === 'missing' ? 'deficient' : d.status === 'not_provided' ? 'not_applicable' : d.status" :label="LABELS[d.status] ?? d.status" /></td>
+                        <td class="small">{{ d.uploaded }}<span v-if="d.undertakings"> ({{ d.undertakings }} undertaking{{ d.undertakings === 1 ? '' : 's' }})</span><span v-if="d.missing_rows" class="text-danger"> · {{ d.missing_rows }} entr{{ d.missing_rows === 1 ? 'y' : 'ies' }} without one</span>
+                            <div v-if="d.accepts_undertaking" class="text-muted">Undertaking accepted</div></td>
+                        <td class="small">{{ d.original_required ? `Required — ${d.original_due_stage}` : '—' }}</td>
+                        <td><StatusBadge :value="d.status === 'missing' ? 'deficient' : d.status === 'not_provided' ? 'not_applicable' : d.status === 'undertaking' ? 'pending' : d.status" :label="LABELS[d.status] ?? d.status" /></td>
                     </tr>
-                    <tr v-if="!documents.length"><td colspan="5" class="text-center text-muted small py-3">The advertisement requires no documents for this application.</td></tr>
+                    <tr v-if="!documents.length"><td colspan="6" class="text-center text-muted small py-3">The advertisement requires no documents for this application.</td></tr>
                 </tbody>
             </table>
         </div>

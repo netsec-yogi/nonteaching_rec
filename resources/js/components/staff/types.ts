@@ -34,4 +34,6 @@ export interface StaffDocument {
     original_name: string; mime: string; size: number; documentable_type: string | null; documentable_id: number | null;
     verification_status: string; is_frozen: boolean; uploaded_at: string | null;
     verification_remarks?: string | null; verified_by?: string | null; verified_at?: string | null; clarification_response_id?: number | null;
+    upload_type?: 'original' | 'undertaking'; original_status?: string | null; original_due_stage?: string | null;
+    original_received_at?: string | null; original_received_by?: string | null; original_remarks?: string | null;
 }

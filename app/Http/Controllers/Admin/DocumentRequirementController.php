@@ -56,6 +56,7 @@ class DocumentRequirementController extends Controller
             'document_type_id' => ['required', 'exists:document_types,id'],
             'condition' => ['required', Rule::in(array_keys(DocumentRequirement::CONDITIONS))],
             'is_mandatory' => ['nullable', 'boolean'], // null = follow the document type's default
+            'accepts_undertaking' => ['nullable', 'boolean'], // null = follow the document type
             'instructions' => ['nullable', 'string', 'max:500'],
         ]);
     }

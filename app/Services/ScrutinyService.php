@@ -261,40 +261,54 @@ class ScrutinyService
      */
     public function documentChecklist(Application $application): array
     {
-        $documents = $application->documents()->get(['id', 'uuid', 'document_type_id', 'original_name', 'verification_status', 'verification_remarks', 'documentable_type', 'documentable_id']);
+        $documents = $application->documents()->get(['id', 'uuid', 'document_type_id', 'original_name', 'verification_status', 'verification_remarks',
+            'documentable_type', 'documentable_id', 'upload_type', 'original_status', 'original_due_stage', 'original_received_at']);
 
         return $this->requirements->documentRequirements($application)->map(function (DocumentRequirement $r) use ($application, $documents) {
             $docs = $documents->where('document_type_id', $r->document_type_id);
+            $accepts = $r->acceptsUndertaking();
+            // An undertaking only counts where the requirement accepts one; otherwise the original is still missing.
+            $usable = $accepts ? $docs : $docs->where('upload_type', '!=', ApplicationDocument::UNDERTAKING);
             $rows = $this->requirements->rowsWithoutDocument($r, $application, $documents);
-            $missing = $rows === null ? $docs->isEmpty() : $rows->isNotEmpty();
+            $missing = $rows === null ? $usable->isEmpty() : $rows->isNotEmpty();
             $mandatory = $r->isMandatory();
+            $originalInHand = $docs->contains(fn ($d) => $d->upload_type !== ApplicationDocument::UNDERTAKING || $d->original_status === 'received_verified');
+            $awaited = $usable->where('original_status', 'awaited');
 
             return [
                 'document_type' => $r->documentType->code,
                 'name' => $r->documentType->name,
                 'mandatory' => $mandatory,
+                'accepts_undertaking' => $accepts,
                 'condition' => DocumentRequirement::CONDITIONS[$r->condition] ?? $r->condition,
                 'uploaded' => $docs->count(),
+                'undertakings' => $docs->where('upload_type', ApplicationDocument::UNDERTAKING)->count(),
+                'original_required' => $awaited->isNotEmpty(),
+                'original_due_stage' => $awaited->first()?->original_due_stage,
                 'missing_rows' => $rows?->count(),
                 'status' => match (true) {
                     $missing => $mandatory ? 'missing' : 'not_provided',
-                    $docs->contains('verification_status', 'rejected') => 'rejected',
-                    $docs->isNotEmpty() && $docs->every(fn ($d) => $d->verification_status === 'verified') => 'verified',
-                    $docs->isEmpty() => 'not_applicable', // a per-row type with no rows to cover
+                    $docs->contains('verification_status', 'rejected') || $docs->contains('original_status', 'received_rejected') => 'rejected',
+                    ! $originalInHand && $awaited->isNotEmpty() => 'undertaking',
+                    $usable->isNotEmpty() && $usable->every(fn ($d) => $d->verification_status === 'verified') && $awaited->isEmpty() => 'verified',
+                    $usable->isEmpty() => 'not_applicable', // a per-row type with no rows to cover
                     default => 'pending',
                 },
-                'documents' => $docs->map(fn ($d) => ['id' => $d->id, 'uuid' => $d->uuid, 'name' => $d->original_name,
-                    'verification_status' => $d->verification_status, 'remarks' => $d->verification_remarks])->values()->all(),
+                'documents' => $docs->map(fn ($d) => ['id' => $d->id, 'uuid' => $d->uuid, 'name' => $d->original_name, 'upload_type' => $d->upload_type,
+                    'verification_status' => $d->verification_status, 'remarks' => $d->verification_remarks,
+                    'original_status' => $d->original_status, 'original_received_at' => $d->original_received_at?->toIso8601String()])->values()->all(),
             ];
         })->values()->all();
     }
 
     public function refreshDocumentStatus(Application $application): void
     {
-        $docs = $application->documents()->get(['verification_status']);
+        $docs = $application->documents()->get(['verification_status', 'upload_type', 'original_status']);
         $missingMandatory = collect($this->documentChecklist($application))->contains('status', 'missing');
         $status = match (true) {
-            $docs->contains('verification_status', 'rejected'), $missingMandatory => 'deficient',
+            $docs->contains('verification_status', 'rejected'), $docs->contains('original_status', 'received_rejected'), $missingMandatory => 'deficient',
+            // Everything accepted so far, but originals promised by undertakings are still to be produced.
+            $docs->isNotEmpty() && $docs->every(fn ($d) => $d->verification_status === 'verified') && $docs->contains('original_status', 'awaited') => 'originals_awaited',
             $docs->isNotEmpty() && $docs->every(fn ($d) => $d->verification_status === 'verified') => 'verified',
             default => 'pending',
         };
@@ -665,6 +679,9 @@ class ScrutinyService
             ],
             'items' => $checklist,
             'documents' => $documents,
+            // Not deficiencies: undertakings accepted in place of documents whose originals are still to be produced.
+            'originals_awaited' => collect($documents)->where('original_required', true)
+                ->map(fn ($d) => $d['name'].' — signed undertaking submitted; original to be produced '.mb_strtolower($d['original_due_stage']))->values()->all(),
             'eligibility' => $this->eligibility($application),
             'observations' => $application->observations->map(fn ($o) => [
                 'section' => $o->section, 'text' => $o->observation, 'deficiency' => $o->is_deficiency,

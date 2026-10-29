@@ -45,6 +45,7 @@ export interface Profile {
         paid_to: { account_holder: string | null; bank_name: string | null; ifsc: string | null; account_number_last4: string | null; upi_id: string | null } | null;
         history: { status: string; remarks: string | null; by: string | null; at: string | null }[];
     };
+    identity: { pan: string | null; aadhaar: string | null; can_reveal: boolean };
     endorsement: null | { verification_status: string | null; remarks: string | null; verified_by: string | null; verified_at: string | null };
     referees: RefereeRow[] | null;
     recommendations: { id: number; position: number; reference_no: string; referee_name: string; overall_recommendation: string; submitted_at: string | null }[] | null;

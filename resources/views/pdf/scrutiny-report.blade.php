@@ -65,6 +65,11 @@
     <ul class="small">@foreach($report['deficiencies'] as $d)<li>{{ $d }}</li>@endforeach</ul>
 @else <p class="muted small">None.</p> @endif
 
+@if(! empty($report['originals_awaited']))
+<h2>Originals to be Produced (Signed Undertakings)</h2>
+<ul class="small">@foreach($report['originals_awaited'] as $o)<li>{{ $o }}</li>@endforeach</ul>
+@endif
+
 <h2>Clarifications</h2>
 @forelse($report['clarifications'] as $c)
     <p class="small"><strong>{{ $c['subject'] }}</strong> — issued {{ $dt($c['issued_at']) }}, due {{ $dt($c['due_at']) }}, status {{ ucfirst($c['status']) }}{{ $c['resolution'] ? ': '.$c['resolution'] : '' }}</p>

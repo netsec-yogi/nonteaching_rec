@@ -59,6 +59,8 @@ export interface Requirement {
     name: string;
     step: string;
     is_mandatory: boolean;
+    /** A signed undertaking may be uploaded in place of the document. */
+    accepts_undertaking: boolean;
     instructions: string | null;
     satisfied: boolean;
 }
@@ -74,6 +76,8 @@ export interface Options {
     training_types: Record<string, string>;
     declaration_questions: Record<string, DeclarationQuestion>;
     posts: { id: number; code: string; name: string }[];
+    undertaking_text: string;
+    original_due_stage: string;
 }
 
 /* ---------- Step data ---------- */
@@ -141,6 +145,9 @@ export interface PersonalData {
     disability_type: string | null;
     disability_percentage: number | null;
     nearest_railway_station: string | null;
+    pan_number: string | null;
+    aadhaar_number: string | null;
+    identity_number_requirement: 'optional' | 'pan' | 'aadhaar' | 'pan_or_aadhaar';
     permanent_same_as_correspondence: boolean;
     correspondence: Address;
     permanent: Address;

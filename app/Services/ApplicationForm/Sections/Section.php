@@ -60,6 +60,12 @@ abstract class Section
         return true;
     }
 
+    /** Normalise posted values before validation (e.g. spaces in identity numbers). */
+    public function prepare(array $input): array
+    {
+        return $input;
+    }
+
     /**
      * Whether a step that does not apply is left out of the wizard entirely (rather than shown
      * greyed out) and refuses to be saved.

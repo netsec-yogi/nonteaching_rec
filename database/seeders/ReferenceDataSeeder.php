@@ -59,6 +59,7 @@ class ReferenceDataSeeder extends Seeder
         $types = [
             ['fee_receipt', 'Application fee receipt / NEFT transaction proof', $any, 1024, 'payment'],
             ['photo', 'Passport-size photograph', $img, 200, 'personal'],
+            ['signature', "Candidate's Signature", $img, 100, 'personal'],
             ['id_proof', 'Photo identity card (Govt. agency / last attended institution)', $any, 1024, 'personal'],
             ['category_certificate', 'Category certificate (SC / ST / OBC-NCL / EWS)', $pdf, 2048, 'personal'],
             ['disability_certificate', 'Disability (PwBD) certificate', $pdf, 2048, 'personal'],
@@ -81,11 +82,13 @@ class ReferenceDataSeeder extends Seeder
             ['clarification_document', 'Document submitted in response to a clarification', $any, 10240, null],
         ];
         // Default requirement level on a fresh install (advertisement requirements may override it).
-        $optional = ['analogous_post_proof', 'case_details', 'merit_certificate', 'training_certificate', 'membership_certificate',
+        $undertaking = ['qualification_certificate', 'experience_certificate', 'category_certificate', 'disability_certificate',
+            'esm_certificate', 'analogous_post_proof', 'noc', 'desirable_qualification_proof'];
+        $optional = ['signature', 'analogous_post_proof', 'case_details', 'merit_certificate', 'training_certificate', 'membership_certificate',
             'achievement_document', 'noc', 'desirable_qualification_proof', 'supporting_sheet', 'clarification_document'];
         foreach ($types as [$code, $name, $mimes, $kb, $step]) {
             DocumentType::firstOrCreate(['code' => $code], ['name' => $name, 'allowed_mimes' => $mimes, 'max_kb' => $kb, 'step' => $step,
-                'is_mandatory' => ! in_array($code, $optional, true), 'is_active' => true]);
+                'is_mandatory' => ! in_array($code, $optional, true), 'accepts_undertaking' => in_array($code, $undertaking, true), 'is_active' => true]);
         }
     }
 

@@ -2,7 +2,9 @@
 
 namespace App\Services\ApplicationForm\Sections;
 
+use App\Models\Advertisement;
 use App\Models\Application;
+use App\Support\IdentityNumbers;
 use Illuminate\Validation\Rule;
 
 /** Sections 5–16 — Personal information and addresses. */
@@ -12,6 +14,7 @@ class PersonalSection extends Section
         'salutation', 'full_name', 'relation_type', 'relation_name', 'date_of_birth', 'place_of_birth', 'mobile',
         'email', 'nationality', 'gender', 'marital_status', 'category', 'is_pwd', 'disability_type',
         'disability_percentage', 'nearest_railway_station', 'permanent_same_as_correspondence',
+        'pan_number', 'aadhaar_number',
     ];
 
     private const ADDRESS_FIELDS = ['line1', 'line2', 'city', 'district', 'state', 'pincode', 'country'];
@@ -53,6 +56,21 @@ class PersonalSection extends Section
             'permanent_same_as_correspondence' => ['boolean'],
         ];
 
+        // PAN / Aadhaar: optional unless the advertisement requires one (format checks only, no external verification).
+        $need = $application->advertisement->identity_number_requirement ?? 'optional';
+        $rules['pan_number'] = [match ($need) {
+            'pan' => 'required', 'pan_or_aadhaar' => 'required_without:aadhaar_number', default => 'nullable'
+        },
+            'nullable', 'string', 'regex:'.IdentityNumbers::PAN];
+        $rules['aadhaar_number'] = [match ($need) {
+            'aadhaar' => 'required', 'pan_or_aadhaar' => 'required_without:pan_number', default => 'nullable'
+        },
+            'nullable', 'string', function ($attribute, $value, $fail) {
+                if (! IdentityNumbers::aadhaarFormatValid((string) $value)) {
+                    $fail('Enter a valid 12-digit Aadhaar number.');
+                }
+            }];
+
         foreach (['correspondence', 'permanent'] as $type) {
             $required = $type === 'permanent' ? 'exclude_if:permanent_same_as_correspondence,true' : 'present';
             $rules["$type"] = [$required, 'array'];
@@ -76,18 +94,35 @@ class PersonalSection extends Section
             'mobile.regex' => 'Enter a valid 10-digit Indian mobile number.',
             'correspondence.pincode.regex' => 'Enter a valid 6-digit PIN code.',
             'permanent.pincode.regex' => 'Enter a valid 6-digit PIN code.',
+            'pan_number.regex' => 'Enter the PAN as five letters, four digits and a letter (e.g. ABCDE1234F).',
+            'pan_number.required' => 'Enter your PAN; this advertisement requires it.',
+            'aadhaar_number.required' => 'Enter your Aadhaar number; this advertisement requires it.',
+            'pan_number.required_without' => 'Enter your PAN or your Aadhaar number; this advertisement requires one of them.',
+            'aadhaar_number.required_without' => 'Enter your Aadhaar number or your PAN; this advertisement requires one of them.',
         ];
     }
 
     public function attributes(): array
     {
         return [
+            'pan_number' => 'PAN', 'aadhaar_number' => 'Aadhaar number',
             'relation_name' => "father's / husband's name",
             'correspondence.line1' => 'correspondence address',
             'correspondence.city' => 'city', 'correspondence.state' => 'state', 'correspondence.pincode' => 'PIN code',
             'permanent.line1' => 'permanent address',
             'permanent.city' => 'city', 'permanent.state' => 'state', 'permanent.pincode' => 'PIN code',
         ];
+    }
+
+    public function prepare(array $input): array
+    {
+        foreach (['pan_number' => 'normalisePan', 'aadhaar_number' => 'normaliseAadhaar'] as $field => $fn) {
+            if (array_key_exists($field, $input)) {
+                $input[$field] = IdentityNumbers::$fn(is_scalar($input[$field]) ? (string) $input[$field] : null);
+            }
+        }
+
+        return $input;
     }
 
     public function save(Application $application, array $data): void
@@ -124,6 +159,8 @@ class PersonalSection extends Section
         $data['mobile'] ??= $user?->mobile;
         $data['nationality'] ??= 'Indian';
         $data['permanent_same_as_correspondence'] = (bool) $p?->permanent_same_as_correspondence;
+        // The candidate sees their own numbers in full while editing; everyone else sees them masked.
+        $data['identity_number_requirement'] = $application->advertisement->identity_number_requirement ?? 'optional';
 
         foreach (['correspondence', 'permanent'] as $type) {
             $address = $application->address($type);
@@ -143,6 +180,14 @@ class PersonalSection extends Section
         }
         if (! $application->address('correspondence')?->line1) {
             $issues[] = 'Enter your correspondence address.';
+        }
+        $need = $application->advertisement->identity_number_requirement ?? 'optional';
+        $missing = match ($need) {
+            'pan' => ! $p?->pan_number, 'aadhaar' => ! $p?->aadhaar_number,
+            'pan_or_aadhaar' => ! $p?->pan_number && ! $p?->aadhaar_number, default => false,
+        };
+        if ($missing) {
+            $issues[] = Advertisement::IDENTITY_REQUIREMENTS[$need].' for this advertisement: enter it in your personal information.';
         }
 
         return array_merge($issues, $this->missingDocumentIssues($application));

@@ -147,6 +147,30 @@ Where to pay is configured under Administration → Application fee settings
   required) and amount mismatches; verify/reject (reason required) is recorded in
   `payment_verifications`, the status history and the audit trail.
 
+## Signature, PAN / Aadhaar and signed undertakings
+
+- The candidate's signature is a document type (`signature`, Personal step, images only) going
+  through `DocumentService` like any upload; dimension limits come from
+  `recruitment.image_dimensions`, the size limit from the document type. Optional unless an
+  advertisement adds a requirement for it. The PDF prints it beside the declaration, scaled to fit
+  a 50 × 18 mm box without distortion.
+- PAN and Aadhaar numbers (`application_personal_details`, encrypted casts, hidden from
+  serialisation) are optional unless the advertisement's `identity_number_requirement` asks for one.
+  `App\Support\IdentityNumbers` normalises and format-checks them (Aadhaar: 12 digits with a
+  Verhoeff check digit — format only, never UIDAI verification) and masks them. Snapshots, PDFs and
+  staff views carry only masked values; the full numbers are served by
+  `GET admin/applications/{uuid}/identity` to holders of `identity.view`, and each view is logged
+  in `document_access_logs` and the audit trail. They are redacted from audit values and wiped on
+  retention disposal.
+- A signed undertaking ("I shall produce the required/missing document…") may be uploaded in place
+  of a document where the requirement accepts it (`document_requirements.accepts_undertaking`,
+  null = the document type's `accepts_undertaking`). It is stored as an `application_documents` row
+  of that document type with `upload_type = undertaking` and `original_status = awaited`; it counts
+  towards a mandatory requirement only where accepted. Verifying it accepts the undertaking, not the
+  original. Staff record the original later (`POST …/documents/{uuid}/original`:
+  received_verified / received_rejected / awaited), keeping the undertaking and its decision.
+  `document_status` becomes `originals_awaited` while accepted undertakings still await originals.
+
 ## Submission
 
 `SubmissionService::submit()` in one transaction, with the application and advertisement

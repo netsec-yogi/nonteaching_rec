@@ -5,7 +5,7 @@ import { api } from '@/api/client';
 import { useForm } from '@/composables/useForm';
 import FieldError from '@/components/FieldError.vue';
 import FeeScheduleEditor from './FeeScheduleEditor.vue';
-import { ENDORSEMENT_MODES, PAYMENT_METHODS, cleanFee, type AdvertisementDetail, type Cycle, type FeeSchedule, type FormTemplate } from './types';
+import { ENDORSEMENT_MODES, IDENTITY_REQUIREMENTS, PAYMENT_METHODS, cleanFee, type AdvertisementDetail, type Cycle, type FeeSchedule, type FormTemplate } from './types';
 
 const props = defineProps<{ ad: AdvertisementDetail | null; cycles: Cycle[]; refereeForms: FormTemplate[]; evaluationForms: FormTemplate[] }>();
 const emit = defineEmits<{ (e: 'saved', ad: AdvertisementDetail): void }>();
@@ -39,6 +39,7 @@ const f = reactive({
     referee_extra_verification: a?.referee_extra_verification ?? false,
     referee_form_template_id: a?.referee_form_template_id ?? (props.refereeForms.find((t) => t.is_active)?.id ?? null) as number | null,
     endorsement_mode: a?.endorsement_mode ?? 'required_for_in_service',
+    identity_number_requirement: a?.identity_number_requirement ?? 'optional',
     endorsement_instructions: a?.endorsement_instructions ?? '',
     committee_evaluation_mode: a?.committee_evaluation_mode ?? 'individual',
     evaluation_form_template_id: a?.evaluation_form_template_id ?? (props.evaluationForms.find((t) => t.is_active)?.id ?? null) as number | null,
@@ -255,6 +256,14 @@ const e = form.errors;
                         <label class="form-label" for="ad-endinstr">Endorsement instructions</label>
                         <textarea id="ad-endinstr" v-model="f.endorsement_instructions" rows="2" class="form-control" :class="{ 'is-invalid': e.endorsement_instructions }"></textarea>
                         <FieldError :errors="e" name="endorsement_instructions" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label required" for="ad-idreq">PAN / Aadhaar number</label>
+                        <select id="ad-idreq" v-model="f.identity_number_requirement" class="form-select" :class="{ 'is-invalid': e.identity_number_requirement }" aria-describedby="ad-idreq-help">
+                            <option v-for="(label, key) in IDENTITY_REQUIREMENTS" :key="key" :value="key">{{ label }}</option>
+                        </select>
+                        <FieldError :errors="e" name="identity_number_requirement" />
+                        <div id="ad-idreq-help" class="form-text">Both are optional unless required here for an approved recruitment purpose. Numbers are format-checked only.</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label required" for="ad-cmode">Committee evaluation mode</label>

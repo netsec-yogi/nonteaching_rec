@@ -17,9 +17,23 @@ class ApplicationDocument extends BaseModel
 
     protected $hidden = ['disk', 'path', 'sha256'];
 
-    protected $attributes = ['verification_status' => 'pending', 'is_frozen' => false];
+    public const ORIGINAL = 'original';
 
-    protected $casts = ['verified_at' => 'datetime', 'is_frozen' => 'boolean'];
+    /** A signed undertaking uploaded in place of the original document (the original is produced later). */
+    public const UNDERTAKING = 'undertaking';
+
+    public const UNDERTAKING_TEXT = 'I shall produce the required/missing document before/at the time of Interview/Document Verification.';
+
+    public const ORIGINAL_DUE_STAGE = 'Before / at the Interview or Document Verification';
+
+    protected $attributes = ['verification_status' => 'pending', 'is_frozen' => false, 'upload_type' => self::ORIGINAL];
+
+    protected $casts = ['verified_at' => 'datetime', 'is_frozen' => 'boolean', 'original_received_at' => 'datetime'];
+
+    public function isUndertaking(): bool
+    {
+        return $this->upload_type === self::UNDERTAKING;
+    }
 
     protected static function booted(): void
     {
@@ -49,5 +63,10 @@ class ApplicationDocument extends BaseModel
     public function verifier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function originalReceiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'original_received_by');
     }
 }
