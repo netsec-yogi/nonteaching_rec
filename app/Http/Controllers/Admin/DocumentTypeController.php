@@ -51,6 +51,7 @@ class DocumentTypeController extends Controller
             'allowed_mimes.*' => [Rule::in(['application/pdf', 'image/jpeg', 'image/png'])],
             'max_kb' => ['nullable', 'integer', 'between:20,20480'],
             'step' => ['nullable', Rule::in(self::STEPS)],
+            'is_mandatory' => ['boolean'],
             'is_active' => ['boolean'],
         ]);
     }

@@ -39,10 +39,12 @@ class RequirementResolver
             ->where(fn ($q) => $q->whereNull('post_id')->orWhere('post_id', $application->post_id))
             ->get()
             ->filter(fn (DocumentRequirement $r) => $this->conditionHolds($r->condition, $application))
+            // Fee-step documents (payment proof) never apply when no fee is payable, whatever their condition.
+            ->reject(fn (DocumentRequirement $r) => $r->documentType->step === 'payment' && $this->fees->amountDue($application) <= 0)
             ->values();
     }
 
-    /** Requirements that are mandatory and have no upload yet. */
+    /** Requirements that are mandatory (the requirement's override, else the document type's default) and have no upload yet. */
     public function missingDocuments(Application $application): Collection
     {
         $documents = $application->documents()->get(['document_type_id', 'documentable_type', 'documentable_id']);
@@ -50,7 +52,7 @@ class RequirementResolver
 
         return $this->documentRequirements($application)
             ->filter(function (DocumentRequirement $r) use ($application, $documents, $uploadedTypeIds) {
-                if (! $r->is_mandatory) {
+                if (! $r->isMandatory()) {
                     return false;
                 }
                 $rows = $this->rowsWithoutDocument($r, $application, $documents);

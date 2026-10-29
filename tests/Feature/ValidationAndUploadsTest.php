@@ -118,7 +118,8 @@ class ValidationAndUploadsTest extends TestCase
         $fee = $this->getJson("/api/applications/{$this->draft->uuid}")->json('application.fee');
         $this->assertEquals(0, $fee['amount']);
         $this->assertSame('SC', $fee['basis']);
-        $this->save('payment', [])->assertOk();
-        $this->assertSame('exempt', $this->draft->payment()->value('status'));
+        // No fee: the fee step is left out of the wizard and cannot be saved through the API.
+        $this->save('payment', [])->assertUnprocessable()->assertJsonValidationErrors('section');
+        $this->assertNotContains('payment', array_column($this->getJson("/api/applications/{$this->draft->uuid}")->json('steps'), 'key'));
     }
 }

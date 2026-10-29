@@ -55,7 +55,7 @@ class DocumentRequirementController extends Controller
             'post_id' => ['nullable', Rule::exists('posts', 'id')->where('advertisement_id', $ad->id)],
             'document_type_id' => ['required', 'exists:document_types,id'],
             'condition' => ['required', Rule::in(array_keys(DocumentRequirement::CONDITIONS))],
-            'is_mandatory' => ['boolean'],
+            'is_mandatory' => ['nullable', 'boolean'], // null = follow the document type's default
             'instructions' => ['nullable', 'string', 'max:500'],
         ]);
     }

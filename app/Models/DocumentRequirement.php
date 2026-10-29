@@ -17,7 +17,27 @@ class DocumentRequirement extends BaseModel
         'fee_payable' => 'Application fee payable',
     ];
 
+    /** is_mandatory: true / false overrides the document type; null follows the document type's default. */
     protected $casts = ['is_mandatory' => 'boolean'];
+
+    protected $appends = ['effective_mandatory'];
+
+    /** Whether the document must be uploaded when this requirement applies. */
+    public function isMandatory(): bool
+    {
+        if ($this->is_mandatory !== null) {
+            return $this->is_mandatory;
+        }
+
+        return $this->relationLoaded('documentType')
+            ? (bool) $this->documentType?->is_mandatory
+            : (bool) DocumentType::whereKey($this->document_type_id)->value('is_mandatory');
+    }
+
+    public function getEffectiveMandatoryAttribute(): bool
+    {
+        return $this->isMandatory();
+    }
 
     public function documentType(): BelongsTo
     {

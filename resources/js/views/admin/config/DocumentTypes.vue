@@ -17,7 +17,7 @@ const types = ref<DocumentType[]>([]);
 const steps = ref<string[]>([]);
 const q = ref('');
 const editing = ref<DocumentType | null | undefined>(undefined);
-const f = reactive({ code: '', name: '', description: '', allowed_mimes: ['application/pdf'] as string[], max_kb: 2048 as number | string, step: null as string | null, is_active: true });
+const f = reactive({ code: '', name: '', description: '', allowed_mimes: ['application/pdf'] as string[], max_kb: 2048 as number | string, step: null as string | null, is_mandatory: true, is_active: true });
 
 async function load() {
     loading.value = true;
@@ -35,8 +35,8 @@ onMounted(async () => {
 function open(t: DocumentType | null) {
     form.clear();
     Object.assign(f, t
-        ? { code: t.code, name: t.name, description: t.description ?? '', allowed_mimes: [...t.allowed_mimes], max_kb: t.max_kb, step: t.step, is_active: t.is_active }
-        : { code: '', name: '', description: '', allowed_mimes: ['application/pdf'], max_kb: defaultKb.value, step: null, is_active: true });
+        ? { code: t.code, name: t.name, description: t.description ?? '', allowed_mimes: [...t.allowed_mimes], max_kb: t.max_kb, step: t.step, is_mandatory: t.is_mandatory, is_active: t.is_active }
+        : { code: '', name: '', description: '', allowed_mimes: ['application/pdf'], max_kb: defaultKb.value, step: null, is_mandatory: true, is_active: true });
     editing.value = t;
 }
 
@@ -58,12 +58,12 @@ const match = (t: DocumentType) => !q.value || `${t.code} ${t.name}`.toLowerCase
             <input v-model="q" type="search" class="form-control form-control-sm ms-auto" style="max-width: 16rem" placeholder="Search…" aria-label="Search document types">
             <button type="button" class="btn btn-primary btn-sm" @click="open(null)"><i class="bi bi-plus-lg me-1"></i>New document type</button>
         </div>
-        <p class="small text-muted">Uploads are checked against these formats and sizes on the server. Document types are referenced by advertisements' document requirements and checklist items; deactivate a type instead of removing it.</p>
+        <p class="small text-muted">Uploads are checked against these formats and sizes on the server. <strong>Requirement</strong> is the default for advertisements that ask for the document (each advertisement's requirement can override it). Document types are referenced by advertisements' document requirements and checklist items; deactivate a type instead of removing it.</p>
         <LoadingState :loading="loading" :error="error">
             <div class="card">
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead class="table-light"><tr><th>Name</th><th>Code</th><th>Formats</th><th>Max size</th><th>Wizard step</th><th>Active</th><th></th></tr></thead>
+                        <thead class="table-light"><tr><th>Name</th><th>Code</th><th>Formats</th><th>Max size</th><th>Wizard step</th><th>Requirement</th><th>Status</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
                         <tbody>
                             <tr v-for="t in types.filter(match)" :key="t.id" :class="{ 'text-muted': !t.is_active }">
                                 <td><div class="fw-semibold small">{{ t.name }}</div><div v-if="t.description" class="small text-muted">{{ t.description }}</div></td>
@@ -71,6 +71,7 @@ const match = (t: DocumentType) => !q.value || `${t.code} ${t.name}`.toLowerCase
                                 <td class="small">{{ t.allowed_mimes.map((m) => MIMES[m] ?? m).join(', ') }}</td>
                                 <td class="small text-nowrap">{{ size(t.max_kb) }}</td>
                                 <td class="small">{{ humanize(t.step) }}</td>
+                                <td><span class="badge" :class="t.is_mandatory ? 'text-bg-primary' : 'text-bg-light border'">{{ t.is_mandatory ? 'Mandatory' : 'Non-Mandatory' }}</span></td>
                                 <td><span class="badge" :class="t.is_active ? 'text-bg-success' : 'text-bg-secondary'">{{ t.is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end"><button type="button" class="btn btn-sm btn-outline-primary" @click="open(t)"><i class="bi bi-pencil"></i> Edit</button></td>
                             </tr>
@@ -120,6 +121,14 @@ const match = (t: DocumentType) => !q.value || `${t.code} ${t.name}`.toLowerCase
                     </select>
                     <FieldError :errors="form.errors" name="step" />
                 </div>
+            </div>
+            <div class="form-check form-switch mb-1">
+                <input id="dt-mandatory" v-model="f.is_mandatory" class="form-check-input" type="checkbox" role="switch" aria-describedby="dt-mandatory-help">
+                <label class="form-check-label fw-semibold" for="dt-mandatory">Mandatory Document</label>
+            </div>
+            <div id="dt-mandatory-help" class="form-text mb-3">
+                The default for every advertisement that requires this document: when on, the candidate cannot submit without it wherever the
+                advertisement's condition (category, disability, employment…) applies. An advertisement can override it for its own requirement.
             </div>
             <div class="form-check">
                 <input id="dt-active" v-model="f.is_active" class="form-check-input" type="checkbox">

@@ -9,6 +9,7 @@ use App\Models\ApplicationVersion;
 use App\Models\User;
 use App\Notifications\StaffAlert;
 use App\Services\ApplicationForm\ApplicationFormService;
+use App\Services\ApplicationForm\Sections\PaymentSection;
 use App\Services\ApplicationForm\SnapshotBuilder;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,7 @@ class SubmissionService
         private PdfService $pdf,
         private TemplateMailer $mailer,
         private AuditLogger $audit,
+        private PaymentSection $payment,
     ) {}
 
     public function submit(Application $application, User $user): Application
@@ -79,8 +81,8 @@ class SubmissionService
                 $this->status->set($app, 'scrutiny_status', 'submitted');
             }
 
-            $payment = $app->payment()->first();
-            $this->status->set($app, 'fee_status', $payment?->status === 'exempt' ? 'exempt' : ($payment?->status === 'verified' ? 'verified' : 'pending_verification'));
+            // The fee is recalculated now: a zero fee is exempt / not required, never unpaid.
+            $this->status->set($app, 'fee_status', $this->payment->settle($app));
 
             $app->load('post.advertisement');
             if ($this->requirements->endorsementApplicable($app)) {

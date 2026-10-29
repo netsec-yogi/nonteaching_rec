@@ -60,6 +60,20 @@ abstract class Section
         return true;
     }
 
+    /**
+     * Whether a step that does not apply is left out of the wizard entirely (rather than shown
+     * greyed out) and refuses to be saved.
+     */
+    public function rejectsWhenNotApplicable(): bool
+    {
+        return false;
+    }
+
+    public function notApplicableMessage(): string
+    {
+        return 'This section does not apply to your application.';
+    }
+
     /** Cross-field checks run after the rules pass. */
     public function after(Application $application): ?callable
     {

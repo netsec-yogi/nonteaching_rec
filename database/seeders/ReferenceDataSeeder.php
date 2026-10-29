@@ -80,8 +80,12 @@ class ReferenceDataSeeder extends Seeder
             ['supporting_sheet', 'Additional sheet / supporting document', $pdf, 10240, 'checklist'],
             ['clarification_document', 'Document submitted in response to a clarification', $any, 10240, null],
         ];
+        // Default requirement level on a fresh install (advertisement requirements may override it).
+        $optional = ['analogous_post_proof', 'case_details', 'merit_certificate', 'training_certificate', 'membership_certificate',
+            'achievement_document', 'noc', 'desirable_qualification_proof', 'supporting_sheet', 'clarification_document'];
         foreach ($types as [$code, $name, $mimes, $kb, $step]) {
-            DocumentType::firstOrCreate(['code' => $code], ['name' => $name, 'allowed_mimes' => $mimes, 'max_kb' => $kb, 'step' => $step, 'is_active' => true]);
+            DocumentType::firstOrCreate(['code' => $code], ['name' => $name, 'allowed_mimes' => $mimes, 'max_kb' => $kb, 'step' => $step,
+                'is_mandatory' => ! in_array($code, $optional, true), 'is_active' => true]);
         }
     }
 

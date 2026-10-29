@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\AdvertisementService;
 use App\Services\ApplicationForm\ApplicationFormService;
 use App\Services\DocumentService;
+use App\Services\FeeCalculator;
 use App\Services\FeePaymentConfigService;
 use App\Services\RequirementResolver;
 use Illuminate\Database\Eloquent\Model;
@@ -149,7 +150,9 @@ class DemoData
             self::upload($app, 'category_certificate');
         }
 
-        $save('payment', ['method' => 'neft', 'utr_number' => 'SBIN226030012345', 'transaction_date' => now()->subDays(2)->toDateString(), 'amount' => 500, 'bank_name' => 'State Bank of India']);
+        if (app(FeeCalculator::class)->amountDue($app->fresh()) > 0) {
+            $save('payment', ['method' => 'neft', 'utr_number' => 'SBIN226030012345', 'transaction_date' => now()->subDays(2)->toDateString(), 'amount' => 500, 'bank_name' => 'State Bank of India']);
+        }
         if (! $complete) {
             return; // the draft stops part-way through
         }

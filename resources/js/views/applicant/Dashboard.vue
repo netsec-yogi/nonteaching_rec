@@ -93,7 +93,7 @@ async function apply(postId: number) {
     applying.value = postId;
     try {
         const res = await api.post<{ uuid: string }>('/applications', { post_id: postId });
-        router.push(`/applications/${res.data.uuid}/edit/payment`);
+        router.push(`/applications/${res.data.uuid}/edit/personal`);
     } catch (e) {
         const ae = toApiError(e);
         applyErrors[postId] = ae.errors.post_id?.[0] ?? ae.message;

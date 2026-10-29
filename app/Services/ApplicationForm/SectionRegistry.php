@@ -7,15 +7,17 @@ use Illuminate\Contracts\Container\Container;
 use InvalidArgumentException;
 
 /**
- * The wizard's steps, in the order of the paper form. Authoritative for the
- * server; The wizard renders steps from the payload this registry produces.
+ * The wizard's steps. Authoritative for the server; the wizard renders steps from the payload
+ * this registry produces. Paper-form order, except that personal details come before the fee
+ * step: the fee (and whether the fee step applies at all) depends on the category, gender,
+ * PwBD and ex-serviceman details entered there. Each step keeps its paper-form reference.
  */
 class SectionRegistry
 {
     private const SECTIONS = [
+        Sections\PersonalSection::class,
         Sections\PaymentSection::class,
         Sections\PostSection::class,
-        Sections\PersonalSection::class,
         Sections\ExServicemanSection::class,
         Sections\QualificationsSection::class,
         Sections\EmploymentSection::class,

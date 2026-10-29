@@ -19,8 +19,9 @@ const requirements = ref<Requirement[]>([]);
 const conditions = ref<Record<string, string>>({});
 const types = ref<DocumentType[]>([]);
 const editing = ref<Requirement | null | undefined>(undefined);
-const f = reactive({ document_type_id: null as number | null, post_id: null as number | null, condition: 'always', is_mandatory: true, instructions: '' });
+const f = reactive({ document_type_id: null as number | null, post_id: null as number | null, condition: 'always', is_mandatory: null as boolean | null, instructions: '' });
 const readOnly = computed(() => props.ad.status === 'archived');
+const typeDefault = computed(() => types.value.find((t) => t.id === f.document_type_id)?.is_mandatory ?? null);
 const base = computed(() => `/admin/advertisements/${props.ad.id}/requirements`);
 
 async function load() {
@@ -39,7 +40,7 @@ function open(r: Requirement | null) {
     form.clear();
     Object.assign(f, r
         ? { document_type_id: r.document_type_id, post_id: r.post_id, condition: r.condition, is_mandatory: r.is_mandatory, instructions: r.instructions ?? '' }
-        : { document_type_id: null, post_id: null, condition: 'always', is_mandatory: true, instructions: '' });
+        : { document_type_id: null, post_id: null, condition: 'always', is_mandatory: null, instructions: '' });
     editing.value = r;
 }
 
@@ -78,7 +79,10 @@ async function remove(r: Requirement) {
                             </td>
                             <td class="small">{{ r.post ? `${r.post.code}${r.post.name ? ' — ' + r.post.name : ''}` : 'All posts' }}</td>
                             <td class="small">{{ conditions[r.condition] ?? humanize(r.condition) }}</td>
-                            <td><span class="badge" :class="r.is_mandatory ? 'text-bg-primary' : 'text-bg-light border'">{{ r.is_mandatory ? 'Mandatory' : 'Optional' }}</span></td>
+                            <td>
+                                <span class="badge" :class="r.effective_mandatory ? 'text-bg-primary' : 'text-bg-light border'">{{ r.effective_mandatory ? 'Mandatory' : 'Optional' }}</span>
+                                <div class="small text-muted">{{ r.is_mandatory === null ? 'Document type default' : 'Set for this advertisement' }}</div>
+                            </td>
                             <td class="small text-muted">{{ r.instructions }}</td>
                             <td class="text-end text-nowrap">
                                 <button type="button" class="btn btn-sm btn-outline-primary" :disabled="readOnly" @click="open(r)"><i class="bi bi-pencil"></i><span class="visually-hidden">Edit</span></button>
@@ -115,9 +119,15 @@ async function remove(r: Requirement) {
                 </select>
                 <FieldError :errors="form.errors" name="condition" />
             </div>
-            <div class="form-check mb-3">
-                <input id="rq-mand" v-model="f.is_mandatory" class="form-check-input" type="checkbox">
-                <label class="form-check-label" for="rq-mand">Mandatory — the application cannot be submitted without it</label>
+            <div class="mb-3">
+                <label class="form-label" for="rq-mand">Mandatory</label>
+                <select id="rq-mand" v-model="f.is_mandatory" class="form-select" :class="{ 'is-invalid': form.errors.is_mandatory }" aria-describedby="rq-mand-help">
+                    <option :value="null">Use the document type's default ({{ typeDefault === null ? '—' : typeDefault ? 'Mandatory' : 'Optional' }})</option>
+                    <option :value="true">Mandatory for this advertisement</option>
+                    <option :value="false">Optional for this advertisement</option>
+                </select>
+                <FieldError :errors="form.errors" name="is_mandatory" />
+                <div id="rq-mand-help" class="form-text">A mandatory document must be uploaded before submission whenever the condition above holds for the candidate.</div>
             </div>
             <div>
                 <label class="form-label" for="rq-instr">Instructions to candidates</label>

@@ -21,6 +21,7 @@ import ClarificationsPanel from './parts/ClarificationsPanel.vue';
 import StageReportForm from './parts/StageReportForm.vue';
 import EligibilityTable from './parts/EligibilityTable.vue';
 import RefereeStatusTable from './parts/RefereeStatusTable.vue';
+import RequiredDocuments from './parts/RequiredDocuments.vue';
 import RecommendationModal from '../committee/parts/RecommendationModal.vue';
 import type { ApplicationProfile, ChecklistEntry, ScrutinyContext } from './parts/types';
 
@@ -205,8 +206,11 @@ const tabs = computed(() => [
                         <div class="ws-scroll">
                             <ApplicationSnapshot v-if="tab === 'application'" :snapshot="profile.snapshot" />
 
-                            <div v-else-if="tab === 'documents'" class="card">
-                                <DocumentTable :application-uuid="uuid" :documents="profile.documents" :can-download="canOpen" :can-verify="profile.can.verify" @verified="load()" />
+                            <div v-else-if="tab === 'documents'" class="vstack gap-3">
+                                <RequiredDocuments :documents="ctx.documents" />
+                                <div class="card">
+                                    <DocumentTable :application-uuid="uuid" :documents="profile.documents" :can-download="canOpen" :can-verify="profile.can.verify" @verified="load()" />
+                                </div>
                             </div>
 
                             <div v-else-if="tab === 'referees'" class="vstack gap-3">

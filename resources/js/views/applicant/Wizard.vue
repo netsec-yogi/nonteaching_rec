@@ -59,8 +59,10 @@ const isStep = (key?: string | null): key is StepKey => !!key && steps.value.som
 const currentKey = computed<StepKey>(() => {
     if (isStep(props.step)) return props.step;
     if (isStep(app.value?.current_step)) return app.value!.current_step as StepKey;
-    return steps.value[0]?.key ?? 'payment';
+    return steps.value[0]?.key ?? 'personal';
 });
+// A step can leave the list (the fee step once no fee is payable): keep the address bar on a real step.
+watch(steps, () => { if (props.step && steps.value.length && !isStep(props.step)) router.replace(`/applications/${props.uuid}/edit/${currentKey.value}`); });
 const currentIndex = computed(() => steps.value.findIndex((s) => s.key === currentKey.value));
 const current = computed(() => steps.value[currentIndex.value]);
 const nextStep = computed(() => steps.value[currentIndex.value + 1] ?? null);
@@ -163,7 +165,6 @@ provide(wizardKey, {
 /* ---------- Saving ---------- */
 
 function body(key: StepKey): unknown {
-    if (key === 'payment' && Number(app.value?.fee.amount ?? 0) <= 0) return {};
     return drafts.value[key];
 }
 

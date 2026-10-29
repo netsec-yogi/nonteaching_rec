@@ -89,12 +89,19 @@ export interface ApplicationProfile {
     can: Record<string, boolean>;
 }
 
+export interface RequiredDocument {
+    document_type: string; name: string; mandatory: boolean; condition: string; uploaded: number; missing_rows: number | null;
+    status: 'missing' | 'not_provided' | 'verified' | 'rejected' | 'pending' | 'not_applicable';
+    documents: { id: number; uuid: string; name: string; verification_status: string; remarks: string | null }[];
+}
+
 export interface ScrutinyContext {
     assignment: { id: number; status: string } | null;
     stage: { id: number; name: string; code: string; is_decision_stage: boolean; allow_same_reviewer: boolean } | null;
     can_act: boolean;
     can_correspond: boolean;
     checklist: ChecklistEntry[];
+    documents: RequiredDocument[];
     draft_review: { completeness: string | null; recommendation: string | null; decision: string | null; reasons: string | null; summary: string | null; status: string } | null;
 }
 

@@ -70,7 +70,7 @@ async function apply(post: AdPostDetail) {
     applying.value = post.id;
     try {
         const { data } = await api.post<{ uuid: string }>('/applications', { post_id: post.id });
-        router.push(`/applications/${data.uuid}/edit/payment`);
+        router.push(`/applications/${data.uuid}/edit/personal`);
     } catch (e) {
         const ae = toApiError(e);
         applyErrors[post.id] = ae.errors.post_id?.[0] ?? ae.message;

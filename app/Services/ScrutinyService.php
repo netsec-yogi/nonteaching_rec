@@ -9,6 +9,7 @@ use App\Models\ClarificationRequest;
 use App\Models\ClarificationResponse;
 use App\Models\Committee;
 use App\Models\CommitteeAssignment;
+use App\Models\DocumentRequirement;
 use App\Models\DocumentType;
 use App\Models\PostEligibilityCriterion;
 use App\Models\Qualification;
@@ -250,11 +251,50 @@ class ScrutinyService
         $this->refreshDocumentStatus($document->application);
     }
 
+    /**
+     * The documents the advertisement's requirements ask of this application (conditions evaluated
+     * against what the candidate declared), each with whether it is mandatory — the requirement's
+     * override, else the document type's default — and what was uploaded and verified. A missing
+     * optional document is reported as not provided, never as a deficiency.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function documentChecklist(Application $application): array
+    {
+        $documents = $application->documents()->get(['id', 'uuid', 'document_type_id', 'original_name', 'verification_status', 'verification_remarks', 'documentable_type', 'documentable_id']);
+
+        return $this->requirements->documentRequirements($application)->map(function (DocumentRequirement $r) use ($application, $documents) {
+            $docs = $documents->where('document_type_id', $r->document_type_id);
+            $rows = $this->requirements->rowsWithoutDocument($r, $application, $documents);
+            $missing = $rows === null ? $docs->isEmpty() : $rows->isNotEmpty();
+            $mandatory = $r->isMandatory();
+
+            return [
+                'document_type' => $r->documentType->code,
+                'name' => $r->documentType->name,
+                'mandatory' => $mandatory,
+                'condition' => DocumentRequirement::CONDITIONS[$r->condition] ?? $r->condition,
+                'uploaded' => $docs->count(),
+                'missing_rows' => $rows?->count(),
+                'status' => match (true) {
+                    $missing => $mandatory ? 'missing' : 'not_provided',
+                    $docs->contains('verification_status', 'rejected') => 'rejected',
+                    $docs->isNotEmpty() && $docs->every(fn ($d) => $d->verification_status === 'verified') => 'verified',
+                    $docs->isEmpty() => 'not_applicable', // a per-row type with no rows to cover
+                    default => 'pending',
+                },
+                'documents' => $docs->map(fn ($d) => ['id' => $d->id, 'uuid' => $d->uuid, 'name' => $d->original_name,
+                    'verification_status' => $d->verification_status, 'remarks' => $d->verification_remarks])->values()->all(),
+            ];
+        })->values()->all();
+    }
+
     public function refreshDocumentStatus(Application $application): void
     {
         $docs = $application->documents()->get(['verification_status']);
+        $missingMandatory = collect($this->documentChecklist($application))->contains('status', 'missing');
         $status = match (true) {
-            $docs->contains('verification_status', 'rejected') => 'deficient',
+            $docs->contains('verification_status', 'rejected'), $missingMandatory => 'deficient',
             $docs->isNotEmpty() && $docs->every(fn ($d) => $d->verification_status === 'verified') => 'verified',
             default => 'pending',
         };
@@ -599,8 +639,10 @@ class ScrutinyService
         $checklist = $this->checklist($application);
         $label = fn ($s) => $s ? ucfirst(str_replace('_', ' ', $s)) : '—';
 
+        $documents = $this->documentChecklist($application);
         $deficiencies = collect($checklist)->where('status', 'not_verified')
             ->map(fn ($i) => $i['label'].($i['discrepancy_reason'] ? ': '.$i['discrepancy_reason'] : ''))
+            ->merge(collect($documents)->where('status', 'missing')->map(fn ($d) => 'Mandatory document not uploaded: '.$d['name'].($d['missing_rows'] ? " ({$d['missing_rows']} entr".($d['missing_rows'] === 1 ? 'y' : 'ies').' without one)' : '')))
             ->merge($application->observations->where('is_deficiency', true)->whereNull('resolved_at')->pluck('observation'))
             ->values()->all();
 
@@ -622,6 +664,7 @@ class ScrutinyService
                 'outcome' => $application->outcome ? $label($application->outcome) : null,
             ],
             'items' => $checklist,
+            'documents' => $documents,
             'eligibility' => $this->eligibility($application),
             'observations' => $application->observations->map(fn ($o) => [
                 'section' => $o->section, 'text' => $o->observation, 'deficiency' => $o->is_deficiency,

@@ -10,7 +10,7 @@ export const GENDERS: Record<string, string> = { male: 'Male', female: 'Female',
 export const STATUS_OPTIONS: Record<string, string[]> = {
     status: ['draft', 'submitted', 'reopened', 'withdrawn'],
     scrutiny_status: ['submitted', 'received', 'assigned', 'in_progress', 'clarification_required', 'clarification_received', 'completed', 'under_review', 'decided'],
-    fee_status: ['not_submitted', 'pending_verification', 'verified', 'rejected', 'exempt'],
+    fee_status: ['not_submitted', 'pending_verification', 'verified', 'rejected', 'exempt', 'not_required'],
     referee_status: ['not_started', 'pending', 'partial', 'complete', 'exception'],
     endorsement_status: ['not_applicable', 'pending', 'submitted', 'verified', 'rejected'],
     document_status: ['pending', 'verified', 'deficient'],

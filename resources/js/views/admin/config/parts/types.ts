@@ -24,11 +24,13 @@ export interface AdDocument { id: number; title: string; original_name: string; 
 
 export interface DocumentType {
     id: number; code: string; name: string; description: string | null; allowed_mimes: string[]; max_kb: number;
-    step: string | null; is_active: boolean;
+    step: string | null; is_mandatory: boolean; is_active: boolean;
 }
 
 export interface Requirement {
-    id: number; post_id: number | null; document_type_id: number; condition: string; is_mandatory: boolean;
+    id: number; post_id: number | null; document_type_id: number; condition: string;
+    /** null = follow the document type's default; effective_mandatory is the resulting value. */
+    is_mandatory: boolean | null; effective_mandatory: boolean;
     instructions: string | null; document_type?: DocumentType; post?: { id: number; code: string; name?: string } | null;
 }
 

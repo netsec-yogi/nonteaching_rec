@@ -94,7 +94,7 @@ class ApplicationFormService
                 'advertisement_id' => $post->advertisement_id,
                 'post_id' => $post->id,
                 'status' => Application::DRAFT,
-                'current_step' => 'payment',
+                'current_step' => 'personal',
                 'completed_steps' => [],
             ]);
             $application->personal()->create([
@@ -104,6 +104,7 @@ class ApplicationFormService
                 'nationality' => 'Indian',
             ]);
             $this->audit->record('application.created', $application, [], ['post' => $post->code]);
+            $this->sections->get('payment')->syncFeeRecord($application);
 
             return $application;
         });
@@ -119,6 +120,7 @@ class ApplicationFormService
         $this->load($application);
 
         $section = $this->sections->get($key);
+        $this->assertSectionApplies($application, $key);
         $validator = Validator::make($input, $section->rules($application), $section->messages(), $section->attributes());
         if ($after = $section->after($application)) {
             $validator->after($after);
@@ -127,12 +129,26 @@ class ApplicationFormService
 
         DB::transaction(function () use ($application, $section, $data, $key) {
             $section->save($application, $data);
+            // Category, gender, PwBD or ex-serviceman details may have changed the fee.
+            $this->sections->get('payment')->syncFeeRecord($application->fresh());
             $steps = array_values(array_unique([...($application->completed_steps ?? []), $key]));
             $application->forceFill(['current_step' => $key, 'completed_steps' => $steps])->save();
             $this->audit->record('application.section_saved', $application, [], [], ['section' => $key]);
         });
 
         return $this->payload($application->fresh());
+    }
+
+    /** Steps left out of the wizard when they do not apply (the fee step for a zero fee) cannot be saved or uploaded to. */
+    public function assertSectionApplies(Application $application, ?string $key): void
+    {
+        if (! $key || ! $this->sections->has($key)) {
+            return;
+        }
+        $section = $this->sections->get($key);
+        if ($section->rejectsWhenNotApplicable() && ! $section->isApplicable($application)) {
+            throw ValidationException::withMessages(['section' => $section->notApplicableMessage()]);
+        }
     }
 
     public function assertEditable(Application $application, ?string $sectionKey = null): void
@@ -164,6 +180,8 @@ class ApplicationFormService
 
     public function payload(Application $application): array
     {
+        $fee = $this->fees->breakdown($application);
+        $feePayable = $fee['amount'] > 0;
         $this->load($application);
         $issues = $this->issues($application);
         $reopening = $application->status === Application::REOPENED ? $application->reopenings->sortByDesc('id')->first() : null;
@@ -181,7 +199,7 @@ class ApplicationFormService
                 'submitted_at' => $application->submitted_at?->toIso8601String(),
                 'current_step' => $application->current_step,
                 'email_verified' => $application->user->hasVerifiedEmail(),
-                'fee' => $this->fees->breakdown($application),
+                'fee' => $fee,
                 'fee_payment' => $this->feeConfigs->panelFor($application),
                 'advertisement' => [
                     'id' => $application->advertisement->id,
@@ -189,29 +207,32 @@ class ApplicationFormService
                     'title' => $application->advertisement->title,
                     'closes_at' => $application->advertisement->closes_at->toIso8601String(),
                     'is_open' => $application->advertisement->isOpen(),
-                    'payment_methods' => $application->advertisement->payment_methods,
-                    'payment_instructions' => $application->advertisement->payment_instructions,
+                    // Payment details only reach applicants who have a fee to pay.
+                    'payment_methods' => $feePayable ? $application->advertisement->payment_methods : [],
+                    'payment_instructions' => $feePayable ? $application->advertisement->payment_instructions : null,
                     'fee_rules_text' => $application->advertisement->fee_rules_text,
                     'referees_required' => $application->advertisement->referees_required,
                     'instructions' => $application->advertisement->instructions,
                 ],
                 'post' => $application->post->only(['id', 'code', 'name', 'department', 'pay_level', 'pay_scale']),
             ],
-            'steps' => collect($this->sections->all())->map(fn ($s, $key) => [
-                'key' => $key,
-                'title' => $s->title(),
-                'form_reference' => $s->formReference(),
-                'applicable' => $s->isApplicable($application),
-                'issues' => $issues[$key],
-                'visited' => in_array($key, $application->completed_steps ?? [], true),
-            ])->values()->all(),
+            'steps' => collect($this->sections->all())
+                ->reject(fn ($s) => $s->rejectsWhenNotApplicable() && ! $s->isApplicable($application))
+                ->map(fn ($s, $key) => [
+                    'key' => $key,
+                    'title' => $s->title(),
+                    'form_reference' => $s->formReference(),
+                    'applicable' => $s->isApplicable($application),
+                    'issues' => $issues[$key],
+                    'visited' => in_array($key, $application->completed_steps ?? [], true),
+                ])->values()->all(),
             'data' => collect($this->sections->all())->map(fn ($s) => $s->data($application))->all(),
             'documents' => $application->documents->map(fn (ApplicationDocument $d) => $this->documentSummary($d))->values()->all(),
             'requirements' => $this->requirements->documentRequirements($application)->map(fn ($r) => [
                 'document_type' => $r->documentType->code,
                 'name' => $r->documentType->name,
                 'step' => $r->documentType->step ?? 'checklist',
-                'is_mandatory' => $r->is_mandatory,
+                'is_mandatory' => $r->isMandatory(),
                 'instructions' => $r->instructions,
                 'satisfied' => $application->documents->contains('document_type_id', $r->document_type_id),
             ])->values()->all(),

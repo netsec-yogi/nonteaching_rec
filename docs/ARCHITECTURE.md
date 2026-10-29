@@ -71,16 +71,19 @@ Bootstrap Icons (outline set), kept instead of adding Lucide alongside them.
 
 ## The application form as data
 
-`SectionRegistry` lists 17 `Section` classes in paper-form order. Each provides
+`SectionRegistry` lists 17 `Section` classes in paper-form order, except that personal details
+come first and the fee step second (the fee depends on category, gender, PwBD and ex-serviceman
+details). The fee step is left out of the wizard, and refuses saves and fee-proof uploads, when
+the fee calculated for the applicant is zero (`Section::rejectsWhenNotApplicable`). Each provides
 `rules()` (validation), `save()`, `data()` (what the wizard renders and posts back) and
 `issues()` (plain-language reasons the step blocks submission, including missing mandatory
 documents whose document type is configured for that step).
 
 | Step | Paper form | Class |
 |---|---|---|
-| payment | 1 | PaymentSection |
-| post | 2–4 | PostSection |
 | personal | 5–16 | PersonalSection |
+| payment | 1 | PaymentSection (only when a fee is payable) |
+| post | 2–4 | PostSection |
 | ex_serviceman | 17 | ExServicemanSection |
 | qualifications | 18 | QualificationsSection |
 | employment | 19 | EmploymentSection |
@@ -103,7 +106,18 @@ reserved_category, pwd, ex_serviceman, in_service, has_employment, criminal_disc
 fee_payable) and `checklist_assignments` (advertisement-wide plus post-specific templates)
 into the concrete list for one application. `FeeCalculator` applies the fee schedule
 (`{"default": 500, "exemptions": {"SC": 0, …}}`, post overrides advertisement; lowest
-applicable amount wins).
+applicable amount wins). After every saved step, and at submission, `PaymentSection::syncFeeRecord`
+keeps the payment row in line with the fee calculated now: a zero fee is an `exempt` row (fee
+status `exempt` with its basis, or `not_required`), never unpaid; an exemption is removed once a
+fee applies again; a verified payment is never rewritten; replacements are audited.
+
+Whether a required document must be uploaded: `document_types.is_mandatory` is the default, and
+an advertisement's requirement may override it (`document_requirements.is_mandatory`: true / false,
+or null to follow the type) — `DocumentRequirement::isMandatory()`. Requirements apply only when
+their condition holds for the candidate, so a mandatory type is never demanded where it does not
+apply. Missing mandatory documents block submission; missing optional ones never do. The scrutiny
+workspace lists the applicable requirements (`ScrutinyService::documentChecklist`); a missing
+mandatory document is reported as a deficiency and keeps `document_status` deficient.
 
 ## Application fee: bank details, QR code and verification
 

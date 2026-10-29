@@ -41,6 +41,7 @@ class DocumentController extends Controller
         $type = DocumentType::where('code', $data['document_type'])->firstOrFail();
         // After a reopening only the sections opened for correction may change — uploads included.
         $this->form->assertEditable($application, $type->step);
+        $this->form->assertSectionApplies($application, $type->step);
         $document = $this->documents->store($application, $type, $request->file('file'), $request->user(), $documentable, $data['label'] ?? null);
 
         // Replacing a single-file slot (e.g. the photograph) removes the earlier draft upload.

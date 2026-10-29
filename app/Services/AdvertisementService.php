@@ -104,7 +104,7 @@ class AdvertisementService
         if (! $ad->checklistAssignments()->exists()) {
             $problems[] = 'Assign a checklist template to the advertisement or its posts.';
         }
-        if (! $ad->documentRequirements()->where('is_mandatory', true)->exists()) {
+        if (! $ad->documentRequirements()->with('documentType')->get()->contains(fn ($r) => $r->isMandatory())) {
             // The paper form requires attachments (photograph, certificates, fee proof); without
             // configured requirements nothing would be enforced at submission.
             $problems[] = 'Add the mandatory document requirements candidates must upload (photograph, certificates, fee proof…).';

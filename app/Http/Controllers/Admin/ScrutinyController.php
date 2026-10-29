@@ -62,6 +62,7 @@ class ScrutinyController extends Controller
             'can_act' => (bool) $assignment && $request->user()->can('scrutinize', $application),
             'can_correspond' => $request->user()->can('correspond', $application),
             'checklist' => $this->scrutiny->checklist($application),
+            'documents' => $this->scrutiny->documentChecklist($application),
             'draft_review' => $application->scrutinyReviews()->where('scrutiny_stage_id', $stage?->id)->first()?->only(['completeness', 'recommendation', 'decision', 'reasons', 'summary', 'status']),
         ]);
     }
