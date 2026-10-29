@@ -22,6 +22,12 @@ class DocumentRequirement extends BaseModel
 
     protected $appends = ['effective_mandatory', 'effective_accepts_undertaking'];
 
+    /** A requirement taken from the document type's own setting, not configured on the advertisement. */
+    public function isTypeDefault(): bool
+    {
+        return ! $this->exists;
+    }
+
     /** Whether the document must be uploaded when this requirement applies. */
     public function isMandatory(): bool
     {

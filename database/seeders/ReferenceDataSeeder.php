@@ -84,11 +84,16 @@ class ReferenceDataSeeder extends Seeder
         // Default requirement level on a fresh install (advertisement requirements may override it).
         $undertaking = ['qualification_certificate', 'experience_certificate', 'category_certificate', 'disability_certificate',
             'esm_certificate', 'analogous_post_proof', 'noc', 'desirable_qualification_proof'];
-        $optional = ['signature', 'analogous_post_proof', 'case_details', 'merit_certificate', 'training_certificate', 'membership_certificate',
+        $conditions = ['fee_receipt' => 'fee_payable', 'category_certificate' => 'reserved_category', 'disability_certificate' => 'pwd',
+            'esm_certificate' => 'ex_serviceman', 'experience_certificate' => 'has_employment', 'analogous_post_proof' => 'has_employment',
+            'case_details' => 'criminal_disclosure', 'declaration_details' => 'criminal_disclosure', 'apar_copies' => 'in_service',
+            'employer_endorsement' => 'in_service', 'noc' => 'in_service'];
+        $optional = ['signature', 'employer_testimonial', 'declaration_details', 'apar_copies', 'analogous_post_proof', 'case_details', 'merit_certificate', 'training_certificate', 'membership_certificate',
             'achievement_document', 'noc', 'desirable_qualification_proof', 'supporting_sheet', 'clarification_document'];
         foreach ($types as [$code, $name, $mimes, $kb, $step]) {
             DocumentType::firstOrCreate(['code' => $code], ['name' => $name, 'allowed_mimes' => $mimes, 'max_kb' => $kb, 'step' => $step,
-                'is_mandatory' => ! in_array($code, $optional, true), 'accepts_undertaking' => in_array($code, $undertaking, true), 'is_active' => true]);
+                'is_mandatory' => ! in_array($code, $optional, true), 'condition' => $conditions[$code] ?? 'always',
+                'accepts_undertaking' => in_array($code, $undertaking, true), 'is_active' => $code !== 'employer_testimonial']);
         }
     }
 

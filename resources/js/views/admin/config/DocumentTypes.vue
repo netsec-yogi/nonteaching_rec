@@ -15,15 +15,16 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const types = ref<DocumentType[]>([]);
 const steps = ref<string[]>([]);
+const conditions = ref<Record<string, string>>({});
 const q = ref('');
 const editing = ref<DocumentType | null | undefined>(undefined);
-const f = reactive({ code: '', name: '', description: '', allowed_mimes: ['application/pdf'] as string[], max_kb: 2048 as number | string, step: null as string | null, is_mandatory: true, accepts_undertaking: false, is_active: true });
+const f = reactive({ code: '', name: '', description: '', allowed_mimes: ['application/pdf'] as string[], max_kb: 2048 as number | string, step: null as string | null, is_mandatory: true, condition: 'always', accepts_undertaking: false, apply_to_advertisements: false, is_active: true });
 
 async function load() {
     loading.value = true;
     try {
         const { data } = await api.get('/admin/document-types');
-        types.value = data.types; steps.value = data.steps;
+        types.value = data.types; steps.value = data.steps; conditions.value = data.conditions;
     } catch (e) { error.value = toApiError(e).message; } finally { loading.value = false; }
 }
 const defaultKb = ref(2048);
@@ -35,8 +36,8 @@ onMounted(async () => {
 function open(t: DocumentType | null) {
     form.clear();
     Object.assign(f, t
-        ? { code: t.code, name: t.name, description: t.description ?? '', allowed_mimes: [...t.allowed_mimes], max_kb: t.max_kb, step: t.step, is_mandatory: t.is_mandatory, accepts_undertaking: t.accepts_undertaking, is_active: t.is_active }
-        : { code: '', name: '', description: '', allowed_mimes: ['application/pdf'], max_kb: defaultKb.value, step: null, is_mandatory: true, accepts_undertaking: false, is_active: true });
+        ? { code: t.code, name: t.name, description: t.description ?? '', allowed_mimes: [...t.allowed_mimes], max_kb: t.max_kb, step: t.step, is_mandatory: t.is_mandatory, condition: t.condition ?? 'always', accepts_undertaking: t.accepts_undertaking, apply_to_advertisements: false, is_active: t.is_active }
+        : { code: '', name: '', description: '', allowed_mimes: ['application/pdf'], max_kb: defaultKb.value, step: null, is_mandatory: true, condition: 'always', accepts_undertaking: false, apply_to_advertisements: false, is_active: true });
     editing.value = t;
 }
 
@@ -71,7 +72,11 @@ const match = (t: DocumentType) => !q.value || `${t.code} ${t.name}`.toLowerCase
                                 <td class="small">{{ t.allowed_mimes.map((m) => MIMES[m] ?? m).join(', ') }}</td>
                                 <td class="small text-nowrap">{{ size(t.max_kb) }}</td>
                                 <td class="small">{{ humanize(t.step) }}</td>
-                                <td><span class="badge" :class="t.is_mandatory ? 'text-bg-primary' : 'text-bg-light border'">{{ t.is_mandatory ? 'Mandatory' : 'Non-Mandatory' }}</span></td>
+                                <td>
+                                    <span class="badge" :class="t.is_mandatory ? 'text-bg-primary' : 'text-bg-light border'">{{ t.is_mandatory ? 'Mandatory' : 'Non-Mandatory' }}</span>
+                                    <div v-if="t.is_mandatory" class="small text-muted">When: {{ conditions[t.condition] ?? t.condition }}</div>
+                                    <div v-if="t.advertisement_overrides" class="small text-muted">{{ t.advertisement_overrides }} advertisement(s) set their own value</div>
+                                </td>
                                 <td class="small">{{ t.accepts_undertaking ? 'Accepted' : 'Not accepted' }}</td>
                                 <td><span class="badge" :class="t.is_active ? 'text-bg-success' : 'text-bg-secondary'">{{ t.is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end"><button type="button" class="btn btn-sm btn-outline-primary" @click="open(t)"><i class="bi bi-pencil"></i> Edit</button></td>
@@ -127,9 +132,20 @@ const match = (t: DocumentType) => !q.value || `${t.code} ${t.name}`.toLowerCase
                 <input id="dt-mandatory" v-model="f.is_mandatory" class="form-check-input" type="checkbox" role="switch" aria-describedby="dt-mandatory-help">
                 <label class="form-check-label fw-semibold" for="dt-mandatory">Mandatory Document</label>
             </div>
-            <div id="dt-mandatory-help" class="form-text mb-3">
-                The default for every advertisement that requires this document: when on, the candidate cannot submit without it wherever the
-                advertisement's condition (category, disability, employment…) applies. An advertisement can override it for its own requirement.
+            <div id="dt-mandatory-help" class="form-text mb-2">
+                When on, candidates of every advertisement must upload this document whenever the condition below holds — unless the
+                advertisement configures its own requirement for this document, which then decides.
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="dt-condition">Required when</label>
+                <select id="dt-condition" v-model="f.condition" class="form-select" :class="{ 'is-invalid': form.errors.condition }" :disabled="!f.is_mandatory">
+                    <option v-for="(label, key) in conditions" :key="key" :value="key">{{ label }}</option>
+                </select>
+                <FieldError :errors="form.errors" name="condition" />
+            </div>
+            <div v-if="editing?.advertisement_overrides" class="form-check mb-3">
+                <input id="dt-apply" v-model="f.apply_to_advertisements" class="form-check-input" type="checkbox">
+                <label class="form-check-label small" for="dt-apply">Also apply this Mandatory setting to the {{ editing.advertisement_overrides }} advertisement requirement(s) that set their own value</label>
             </div>
             <div class="form-check form-switch mb-1">
                 <input id="dt-undertaking" v-model="f.accepts_undertaking" class="form-check-input" type="checkbox" role="switch" aria-describedby="dt-undertaking-help">

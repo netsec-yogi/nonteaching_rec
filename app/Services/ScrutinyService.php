@@ -281,6 +281,7 @@ class ScrutinyService
                 'mandatory' => $mandatory,
                 'accepts_undertaking' => $accepts,
                 'condition' => DocumentRequirement::CONDITIONS[$r->condition] ?? $r->condition,
+                'source' => $r->isTypeDefault() ? 'document_type' : 'advertisement',
                 'uploaded' => $docs->count(),
                 'undertakings' => $docs->where('upload_type', ApplicationDocument::UNDERTAKING)->count(),
                 'original_required' => $awaited->isNotEmpty(),

@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\ApplicationDocument;
 use App\Models\ChecklistItem;
 use App\Models\DocumentRequirement;
+use App\Models\DocumentType;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,16 +30,35 @@ class RequirementResolver
 
     public function __construct(private FeeCalculator $fees) {}
 
-    /** @return Collection<int, DocumentRequirement> requirements whose condition holds */
+    /**
+     * The document requirements that apply to one application, conditions evaluated:
+     *  1. the advertisement's own requirements (advertisement-wide or for this post) — these decide
+     *     for their document types, including whether they apply at all;
+     *  2. for every other active document type configured as Mandatory under Admin → Document
+     *     Types, the type's own default (its "required when" condition and Mandatory setting).
+     *
+     * @return Collection<int, DocumentRequirement>
+     */
     public function documentRequirements(Application $application): Collection
     {
         $application->loadMissing(['personal', 'employments', 'declarations', 'post.advertisement']);
 
-        return DocumentRequirement::query()
+        $configured = DocumentRequirement::query()
             ->with('documentType')
             ->where('advertisement_id', $application->advertisement_id)
             ->where(fn ($q) => $q->whereNull('post_id')->orWhere('post_id', $application->post_id))
-            ->get()
+            ->get();
+        $covered = $configured->pluck('document_type_id')->unique();
+        $defaults = DocumentType::where('is_active', true)->where('is_mandatory', true)->whereNotNull('step')
+            ->whereNotIn('id', $covered)->get()
+            // The employer's endorsement documents belong to a step that may not apply at all.
+            ->reject(fn (DocumentType $t) => $t->step === 'endorsement' && ! $this->endorsementApplicable($application))
+            ->map(fn (DocumentType $t) => tap(new DocumentRequirement([
+                'advertisement_id' => $application->advertisement_id, 'post_id' => null, 'document_type_id' => $t->id,
+                'condition' => $t->condition ?: 'always', 'is_mandatory' => null, 'accepts_undertaking' => null, 'instructions' => null,
+            ]), fn (DocumentRequirement $r) => $r->setRelation('documentType', $t)));
+
+        return $configured->concat($defaults)
             ->filter(fn (DocumentRequirement $r) => $this->conditionHolds($r->condition, $application))
             // Fee-step documents (payment proof) never apply when no fee is payable, whatever their condition.
             ->reject(fn (DocumentRequirement $r) => $r->documentType->step === 'payment' && $this->fees->amountDue($application) <= 0)

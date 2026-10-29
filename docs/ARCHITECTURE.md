@@ -111,11 +111,13 @@ keeps the payment row in line with the fee calculated now: a zero fee is an `exe
 status `exempt` with its basis, or `not_required`), never unpaid; an exemption is removed once a
 fee applies again; a verified payment is never rewritten; replacements are audited.
 
-Whether a required document must be uploaded: `document_types.is_mandatory` is the default, and
-an advertisement's requirement may override it (`document_requirements.is_mandatory`: true / false,
-or null to follow the type) — `DocumentRequirement::isMandatory()`. Requirements apply only when
-their condition holds for the candidate, so a mandatory type is never demanded where it does not
-apply. Missing mandatory documents block submission; missing optional ones never do. The scrutiny
+Which documents apply (`RequirementResolver::documentRequirements`, used by the wizard, submission,
+scrutiny and reports alike): an advertisement's own requirements decide for their document types
+(`document_requirements.is_mandatory`: true / false, or null to follow the type —
+`DocumentRequirement::isMandatory()`); every other active document type set Mandatory under Admin →
+Document Types applies with its own "required when" condition (`document_types.condition`).
+Requirements apply only when their condition holds for the candidate, so a mandatory type is never
+demanded where it does not apply (endorsement-step types also need the endorsement to apply). Missing mandatory documents block submission; missing optional ones never do. The scrutiny
 workspace lists the applicable requirements (`ScrutinyService::documentChecklist`); a missing
 mandatory document is reported as a deficiency and keeps `document_status` deficient.
 

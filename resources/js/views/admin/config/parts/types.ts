@@ -24,7 +24,8 @@ export interface AdDocument { id: number; title: string; original_name: string; 
 
 export interface DocumentType {
     id: number; code: string; name: string; description: string | null; allowed_mimes: string[]; max_kb: number;
-    step: string | null; is_mandatory: boolean; accepts_undertaking: boolean; is_active: boolean;
+    step: string | null; is_mandatory: boolean; condition: string; accepts_undertaking: boolean; is_active: boolean;
+    advertisement_overrides?: number;
 }
 
 export interface Requirement {
