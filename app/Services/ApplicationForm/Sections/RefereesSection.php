@@ -146,12 +146,13 @@ class RefereesSection extends Section
         }
 
         // Paper item 25: where the candidate has been in employment, the present or most recent
-        // employer or immediate superior should be a referee, or a testimonial from them produced.
+        // employer or immediate superior should be a referee. Testimonials can no longer be uploaded
+        // on this step; one uploaded earlier still satisfies the rule, so existing drafts are not blocked.
         if (($application->is_in_service || $application->employments->isNotEmpty())
             && $application->referees->isNotEmpty()
             && ! $application->referees->contains('is_employer_or_superior', true)
             && ! $application->documents->contains(fn ($d) => $d->documentType?->code === 'employer_testimonial')) {
-            $issues[] = 'As you are or have been in employment, give your present or most recent employer or immediate superior as a referee, or upload a testimonial from them.';
+            $issues[] = 'As you are or have been in employment, give your present or most recent employer or immediate superior as one of the referees.';
         }
 
         return array_merge($issues, $this->missingDocumentIssues($application));

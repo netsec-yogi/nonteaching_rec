@@ -1,9 +1,8 @@
 <script setup lang="ts">
 /** Section 25 — Referees. */
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import FieldError from '@/components/FieldError.vue';
 import { useWizard } from '../context';
-import StepUploads from '../StepUploads.vue';
 import type { RefereesData } from '../types';
 
 const props = defineProps<{ form: RefereesData }>();
@@ -12,15 +11,8 @@ const k = (i: number, f: string) => `referees.${i}.${f}`;
 const inv = (i: number, f: string) => ({ 'is-invalid': !!errors[k(i, f)] });
 const inService = computed(() => !!payload.value.data.employment.is_in_service);
 const employerGiven = computed(() => props.form.referees.some((r) => r.is_employer_or_superior));
+// A testimonial uploaded before the upload was withdrawn from this step still satisfies Section 25.
 const testimonialUploaded = computed(() => payload.value.documents.some((d) => d.document_type === 'employer_testimonial'));
-
-// Sample endorsement letter (a public blank format, for reference only — never attached to the application).
-const sampleUrl = computed(() => payload.value.application.reference_documents?.endorsement_sample ?? null);
-const sampleUnavailable = ref(false);
-onMounted(async () => {
-    if (!sampleUrl.value) { sampleUnavailable.value = true; return; }
-    try { sampleUnavailable.value = !(await fetch(sampleUrl.value, { method: 'HEAD' })).ok; } catch { sampleUnavailable.value = true; }
-});
 </script>
 
 <template>
@@ -38,8 +30,7 @@ onMounted(async () => {
                     </p>
                     <p class="mb-0">
                         Where the applicant is employed, the <strong>present / most recent employer or immediate superior</strong>
-                        should be given as one of the referees, or a <strong>testimonial</strong> from them must be produced
-                        (upload it below).
+                        should be given as one of the referees.
                     </p>
                 </div>
                 <div class="alert alert-light border small">
@@ -50,7 +41,7 @@ onMounted(async () => {
                 </div>
                 <div v-if="inService && !employerGiven && !testimonialUploaded" class="alert alert-warning small py-2">
                     <i class="bi bi-exclamation-triangle me-1"></i>
-                    You are in service: tick "present / most recent employer or immediate superior" for one referee, or upload a testimonial from your employer.
+                    You are in service: tick "present / most recent employer or immediate superior" for one referee.
                 </div>
                 <FieldError :errors="errors" name="referees" />
 
@@ -127,25 +118,5 @@ onMounted(async () => {
                 </div>
             </div>
         </div>
-        <StepUploads step="referees" title="Endorsement by the Employer (In case of in-service candidates)">
-            <template #intro>
-                <div class="border-bottom pb-3 mb-2">
-                    <p class="small text-muted mb-2">
-                        Applicants who are currently employed should refer to this sample format when obtaining the employer endorsement
-                        from their Head of Department, employer, or other competent authority, as applicable.
-                    </p>
-                    <div v-if="sampleUrl && !sampleUnavailable" class="d-flex flex-wrap align-items-center gap-2">
-                        <a :href="sampleUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Download Sample Employer Endorsement Letter (PDF)
-                            <span class="visually-hidden">(opens in a new tab)</span>
-                        </a>
-                        <a :href="sampleUrl" download="Sample_endorsement.pdf" class="btn btn-sm btn-link"><i class="bi bi-download me-1" aria-hidden="true"></i>Save a copy</a>
-                    </div>
-                    <div v-else class="alert alert-warning small py-2 mb-0" role="status">
-                        <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>The sample endorsement letter is temporarily unavailable. Please try again later or contact the Recruitment Section.
-                    </div>
-                </div>
-            </template>
-        </StepUploads>
     </div>
 </template>

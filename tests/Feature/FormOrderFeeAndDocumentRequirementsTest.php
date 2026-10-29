@@ -8,6 +8,7 @@ use App\Models\DocumentRequirement;
 use App\Models\DocumentType;
 use App\Services\ApplicationForm\Sections\PaymentSection;
 use App\Services\ScrutinyService;
+use Database\Seeders\DemoData;
 use Database\Seeders\SampleFiles;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
@@ -244,5 +245,19 @@ class FormOrderFeeAndDocumentRequirementsTest extends TestCase
         $this->assertFalse($app->documents()->where('original_name', 'like', '%Sample_endorsement%')->exists());
         // public/ holds only the intended reference file, no applicant documents.
         $this->assertSame(['Sample_endorsement.pdf'], array_values(array_diff(scandir(public_path('reference')), ['.', '..'])));
+    }
+
+    public function test_employed_applicants_must_name_their_employer_as_a_referee_unless_a_testimonial_was_already_uploaded(): void
+    {
+        $app = $this->completedDraft();
+        $app->forceFill(['is_in_service' => true])->save();
+        $app->referees()->update(['is_employer_or_superior' => false]);
+        $issues = fn () => collect($this->actingAs($app->user)->getJson("/api/applications/{$app->uuid}")->json('steps'))->firstWhere('key', 'referees')['issues'];
+
+        $this->assertContains('As you are or have been in employment, give your present or most recent employer or immediate superior as one of the referees.', $issues());
+
+        // A testimonial uploaded before the upload was withdrawn from the step still satisfies the rule.
+        DemoData::upload($app, 'employer_testimonial');
+        $this->assertEmpty(array_filter($issues(), fn ($i) => str_contains($i, 'employer or immediate superior')));
     }
 }

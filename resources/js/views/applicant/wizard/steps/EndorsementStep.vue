@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** Section 32 — Endorsement by the employer (in-service candidates). */
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import FieldError from '@/components/FieldError.vue';
 import { today, useWizard } from '../context';
 import StepUploads from '../StepUploads.vue';
@@ -12,6 +12,16 @@ const req = computed(() => props.form.required);
 const name = computed(() => payload.value.data.personal.full_name || 'the applicant');
 const types = computed(() => payload.value.options.employment_types);
 const inv = (k: string) => ({ 'is-invalid': !!errors[k] });
+
+// Sample endorsement letter: a public blank format for reference only (never attached to the application).
+// Shown only where the endorsement applies — enabled for the advertisement / post and the candidate in service.
+const sampleUrl = computed(() => payload.value.application.reference_documents?.endorsement_sample ?? null);
+const sampleUnavailable = ref(false);
+onMounted(async () => {
+    if (!props.form.applicable) return;
+    if (!sampleUrl.value) { sampleUnavailable.value = true; return; }
+    try { sampleUnavailable.value = !(await fetch(sampleUrl.value, { method: 'HEAD' })).ok; } catch { sampleUnavailable.value = true; }
+});
 </script>
 
 <template>
@@ -27,6 +37,22 @@ const inv = (k: string) => ({ 'is-invalid': !!errors[k] });
                 </div>
             </div>
             <div v-else class="card-body">
+                <div class="mb-3 pb-3 border-bottom">
+                    <div v-if="sampleUrl && !sampleUnavailable" class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <a :href="sampleUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Download Sample Employer Endorsement Letter (PDF)
+                            <span class="visually-hidden">(opens in a new tab)</span>
+                        </a>
+                        <a :href="sampleUrl" download="Sample_endorsement.pdf" class="btn btn-sm btn-link"><i class="bi bi-download me-1" aria-hidden="true"></i>Save a copy</a>
+                    </div>
+                    <div v-else class="alert alert-warning small py-2 mb-2" role="status">
+                        <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>The sample endorsement letter is temporarily unavailable. Please try again later or contact the Recruitment Section.
+                    </div>
+                    <p class="small text-muted mb-0">
+                        Applicants who are currently employed should refer to this sample format when obtaining the employer endorsement
+                        from their Head of Department, employer, or other competent authority, as applicable.
+                    </p>
+                </div>
                 <div class="alert small" :class="req ? 'alert-warning' : 'alert-info'">
                     <i class="bi me-1" :class="req ? 'bi-exclamation-triangle' : 'bi-info-circle'"></i>
                     <template v-if="req"><strong>Mandatory.</strong> As you are in service, the endorsement of your employer is required under this advertisement. Fill in the particulars from the endorsement issued by your forwarding officer and upload the signed and sealed endorsement.</template>
