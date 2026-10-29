@@ -61,6 +61,8 @@ const routes: RouteRecordRaw[] = [
             { path: 'committee', component: () => import('@/views/admin/committee/Queue.vue'), meta: { staff: true, title: 'Screening Committee' } },
             { path: 'committee/comparison/:id', component: () => import('@/views/admin/committee/Comparison.vue'), props: true, meta: { staff: true, title: 'Comparison report' } },
             { path: 'committee/:uuid', component: () => import('@/views/admin/committee/Workspace.vue'), props: true, meta: { staff: true, title: 'Committee workspace' } },
+            { path: 'admin/payments', component: () => import('@/views/admin/payments/Verification.vue'), meta: { staff: true, permission: 'applications.verify', title: 'Fee verification' } },
+            { path: 'admin/fee-settings', component: () => import('@/views/admin/config/FeeSettings.vue'), meta: { staff: true, permission: 'payments.configure', title: 'Application fee settings' } },
             { path: 'admin/reports', component: () => import('@/views/admin/reports/Reports.vue'), meta: { staff: true, title: 'Reports' } },
             { path: 'admin/logs/:type', component: () => import('@/views/admin/logs/Logs.vue'), props: true, meta: { staff: true } },
 

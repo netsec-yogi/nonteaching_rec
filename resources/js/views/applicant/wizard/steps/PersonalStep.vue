@@ -65,7 +65,7 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
                         <div class="form-text">As it appears in your Class 10 certificate.</div>
                         <FieldError :errors="errors" name="full_name" />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 col-xl-2">
                         <label class="form-label required" for="p-reltype">6. Father's / Husband's name</label>
                         <select id="p-reltype" v-model="form.relation_type" class="form-select" :class="inv('relation_type')">
                             <option :value="null" disabled>Select…</option>
@@ -74,37 +74,37 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
                         </select>
                         <FieldError :errors="errors" name="relation_type" />
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-8 col-xl-4">
                         <label class="form-label required" for="p-relname">{{ form.relation_type === 'husband' ? "Husband's" : "Father's" }} name</label>
                         <input id="p-relname" v-model="form.relation_name" class="form-control" :class="inv('relation_name')" maxlength="200">
                         <FieldError :errors="errors" name="relation_name" />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 col-xl-2">
                         <label class="form-label required" for="p-dob">7. Date of birth</label>
                         <input id="p-dob" v-model="form.date_of_birth" type="date" class="form-control" :class="inv('date_of_birth')" :max="maxDob">
                         <FieldError :errors="errors" name="date_of_birth" />
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-8 col-xl-4">
                         <label class="form-label required" for="p-pob">Place of birth</label>
                         <input id="p-pob" v-model="form.place_of_birth" class="form-control" :class="inv('place_of_birth')" maxlength="150">
                         <FieldError :errors="errors" name="place_of_birth" />
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 col-xl-3">
                         <label class="form-label required" for="p-mobile">8. Mobile number</label>
                         <input id="p-mobile" v-model.trim="form.mobile" type="tel" inputmode="tel" class="form-control" :class="inv('mobile')" maxlength="16" autocomplete="tel" placeholder="10-digit mobile number">
                         <FieldError :errors="errors" name="mobile" />
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 col-xl-3">
                         <label class="form-label required" for="p-email">Email</label>
                         <input id="p-email" v-model.trim="form.email" type="email" class="form-control" :class="inv('email')" maxlength="255" autocomplete="email">
                         <FieldError :errors="errors" name="email" />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 col-xl-2">
                         <label class="form-label required" for="p-nat">9. Nationality</label>
                         <input id="p-nat" v-model="form.nationality" class="form-control" :class="inv('nationality')" maxlength="60">
                         <FieldError :errors="errors" name="nationality" />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 col-xl-2">
                         <label class="form-label required" for="p-gender">10. Gender</label>
                         <select id="p-gender" v-model="form.gender" class="form-select" :class="inv('gender')">
                             <option :value="null" disabled>Select…</option>
@@ -112,7 +112,7 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
                         </select>
                         <FieldError :errors="errors" name="gender" />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 col-xl-2">
                         <label class="form-label required" for="p-marital">11. Marital status</label>
                         <select id="p-marital" v-model="form.marital_status" class="form-select" :class="inv('marital_status')">
                             <option :value="null" disabled>Select…</option>
@@ -120,7 +120,7 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
                         </select>
                         <FieldError :errors="errors" name="marital_status" />
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 col-xl-4">
                         <label class="form-label required" for="p-cat">12. Category</label>
                         <select id="p-cat" v-model="form.category" class="form-select" :class="inv('category')">
                             <option :value="null" disabled>Select…</option>
@@ -129,7 +129,7 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
                         <div class="form-text">A category certificate in the prescribed format is required for SC / ST / OBC-NCL / EWS.</div>
                         <FieldError :errors="errors" name="category" />
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 col-xl-8">
                         <span class="form-label required d-block">13. Whether Physically Handicapped (Person with Disability)</span>
                         <YesNo v-model="form.is_pwd" name="is_pwd" :invalid="!!errors.is_pwd" yes-label="Yes" no-label="No" />
                         <FieldError :errors="errors" name="is_pwd" />
@@ -149,7 +149,7 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
                             <FieldError :errors="errors" name="disability_percentage" />
                         </div>
                     </template>
-                    <div class="col-12">
+                    <div class="col-md-12 col-xl-6">
                         <label class="form-label required" for="p-rail">14. Nearest railway station</label>
                         <input id="p-rail" v-model="form.nearest_railway_station" class="form-control" :class="inv('nearest_railway_station')" maxlength="150">
                         <FieldError :errors="errors" name="nearest_railway_station" />

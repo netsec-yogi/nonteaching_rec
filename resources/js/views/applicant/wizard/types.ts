@@ -35,6 +35,8 @@ export interface ApplicationMeta {
     current_step: string | null;
     email_verified: boolean;
     fee: { amount: number; basis: string | null };
+    /** Bank details to pay the fee to (null when no fee is payable or nothing is configured). */
+    fee_payment: FeePaymentPanel | null;
     advertisement: {
         id: number;
         number: string;
@@ -73,6 +75,24 @@ export interface Options {
 }
 
 /* ---------- Step data ---------- */
+
+export interface FeePaymentPanel {
+    account_holder: string | null;
+    bank_name: string | null;
+    branch_name: string | null;
+    account_number: string | null;
+    account_type: string | null;
+    ifsc: string | null;
+    branch_address: string | null;
+    upi_id: string | null;
+    instructions: string | null;
+    reference_instructions: string | null;
+    payment_deadline: string | null;
+    version: number;
+    has_qr: boolean;
+    /** current = the details that apply now; as_paid = those the recorded payment was made against. */
+    source: 'current' | 'as_paid';
+}
 
 export interface PaymentData {
     method: string | null;

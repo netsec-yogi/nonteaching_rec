@@ -32,9 +32,12 @@ saffron accent, semantic surface/ink/line greys, Inter, card radius and shadows)
 variables and CSS custom properties, and restyles Bootstrap components to the hostel rules:
 cards, uppercase-header data tables, buttons, labels, ringed status pills, underline tabs,
 pagination, dialogs, toasts. Layouts mirror the hostel ones: `AppShell` (white sidebar with
-deep-navy brand strip, sticky top bar with title, notifications and user menu; used by staff
-and signed-in applicants), `GuestLayout` (split sign-in screen), the public top bar, and the
-referee `BareLayout`. Shared pieces: `StatCard` (KPI tile), `Toasts`, `Pager`,
+deep-navy brand strip, sticky top bar with title, notifications and user menu; used by staff),
+`ApplicantShell` (signed-in applicants: no sidebar, one sticky header with branding, the main
+links, a "My applications" dropdown, notifications and the account menu; the links collapse
+behind a menu button below `xl`), `GuestLayout` (split sign-in screen), the public top bar, and
+the referee `BareLayout`. The bell and account menu are shared components
+(`components/shell/NotificationBell.vue`, `UserMenu.vue`). Shared pieces: `StatCard` (KPI tile), `Toasts`, `Pager`,
 `LoadingState`, `BaseModal`, `StatusBadge`. List tables marked `table-cards` reflow into
 labelled cards on phones (`utils/tableCards.ts` labels cells from their headers).
 Light and dark colour modes use Bootstrap's `data-bs-theme` with the hostel's dark palette:
@@ -101,6 +104,34 @@ fee_payable) and `checklist_assignments` (advertisement-wide plus post-specific 
 into the concrete list for one application. `FeeCalculator` applies the fee schedule
 (`{"default": 500, "exemptions": {"SC": 0, …}}`, post overrides advertisement; lowest
 applicable amount wins).
+
+## Application fee: bank details, QR code and verification
+
+The fee *amount* and exemptions live only in the advertisement / post `fee_schedule`;
+`FeeCalculator` computes the amount due on the server (the browser's figure is never trusted).
+Where to pay is configured under Administration → Application fee settings
+(`payments.configure`, also limited to advertisements the user manages):
+
+- `fee_payment_configs` — bank details (account number encrypted at rest), UPI ID, instructions,
+  payment deadline and an optional bank QR image (private disk, streamed through
+  `FeePaymentConfigService::streamQr`, stored exactly as uploaded after type/signature/size/
+  dimension checks). Scope is an advertisement (`post_id` null) or one post, fixed after creation;
+  "copy" makes an independent inactive copy for another scope. One active configuration per
+  scope; a post-specific one overrides the advertisement-wide one.
+- Every change bumps `version` and writes an append-only `fee_payment_config_revisions` row; the
+  audit trail records old/new values with the account number masked. Editing, activating a
+  replacement for, or deactivating a configuration that live applications use needs explicit
+  confirmation. An advertisement with a fee cannot be published until each fee-paying post has
+  an active configuration.
+- When the candidate saves the payment step, `payments` stores the configuration id, version and
+  an encrypted snapshot of the details shown, so later edits never change what a payment was
+  made against. The wizard shows the current configuration for drafts and the snapshot once
+  submitted (`FeePaymentConfigService::panelFor`); the QR is served to the owner only.
+- Manual payments are `pending_verification` on submission. `/admin/payments` (permission
+  `applications.verify`, scoped by `ApplicationAccess`) lists them with display statuses
+  (pending payment, details submitted, pending verification, verified, rejected, exempted, not
+  required) and amount mismatches; verify/reject (reason required) is recorded in
+  `payment_verifications`, the status history and the audit trail.
 
 ## Submission
 

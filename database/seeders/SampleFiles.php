@@ -46,6 +46,27 @@ class SampleFiles
         return self::wrap($bytes, $name, 'image/png');
     }
 
+    /** A square black-and-white pattern standing in for a bank QR code. */
+    public static function qr(string $name = 'qr.png', int $size = 300, string $format = 'png'): UploadedFile
+    {
+        $img = imagecreatetruecolor($size, $size);
+        imagefill($img, 0, 0, imagecolorallocate($img, 255, 255, 255));
+        $black = imagecolorallocate($img, 0, 0, 0);
+        $cell = max(1, intdiv($size, 25));
+        for ($y = 0; $y < 25; $y++) {
+            for ($x = 0; $x < 25; $x++) {
+                if (($x * 7 + $y * 13) % 3 === 0) {
+                    imagefilledrectangle($img, $x * $cell, $y * $cell, ($x + 1) * $cell - 1, ($y + 1) * $cell - 1, $black);
+                }
+            }
+        }
+        ob_start();
+        $format === 'jpeg' ? imagejpeg($img, null, 95) : imagepng($img);
+        $bytes = ob_get_clean();
+
+        return self::wrap($bytes, $name, $format === 'jpeg' ? 'image/jpeg' : 'image/png');
+    }
+
     private static function wrap(string $bytes, string $name, string $mime): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'ntrec');

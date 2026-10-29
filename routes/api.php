@@ -58,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('applications/{application}/status', [Applicant\ApplicationController::class, 'status']);
         Route::get('applications/{application}/pdf/{version?}', [Applicant\ApplicationController::class, 'pdf']);
         Route::get('applications/{application}/receipt', [Applicant\ApplicationController::class, 'receipt']);
+        Route::get('applications/{application}/fee-qr', [Applicant\ApplicationController::class, 'feeQr']);
         Route::post('applications/{application}/withdraw', [Applicant\ApplicationController::class, 'withdraw']);
         Route::post('applications/{application}/documents', [Applicant\DocumentController::class, 'store'])->middleware('throttle:uploads');
         Route::delete('applications/{application}/documents/{document}', [Applicant\DocumentController::class, 'destroy']);
@@ -115,6 +116,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('committee/decision', [Admin\CommitteeController::class, 'decide']);
         });
 
+        Route::get('payments', [Admin\PaymentVerificationController::class, 'index']);
         Route::get('scrutiny/queue', [Admin\ScrutinyController::class, 'queue']);
         Route::get('committee/queue', [Admin\CommitteeController::class, 'queue']);
         Route::get('committees/{committee}/comparison', [Admin\CommitteeController::class, 'comparison']);
@@ -195,6 +197,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('email-templates', [Admin\EmailTemplateController::class, 'index']);
             Route::put('email-templates/{emailTemplate}', [Admin\EmailTemplateController::class, 'update']);
             Route::post('email-templates/{emailTemplate}/preview', [Admin\EmailTemplateController::class, 'preview']);
+        });
+
+        // Application fee bank details and QR codes (also limited to managed advertisements).
+        Route::middleware('permission:payments.configure')->prefix('fee-configs')->group(function () {
+            Route::get('/', [Admin\FeePaymentConfigController::class, 'index']);
+            Route::post('/', [Admin\FeePaymentConfigController::class, 'store']);
+            Route::get('{feePaymentConfig}', [Admin\FeePaymentConfigController::class, 'show']);
+            Route::post('{feePaymentConfig}', [Admin\FeePaymentConfigController::class, 'update']);
+            Route::post('{feePaymentConfig}/status', [Admin\FeePaymentConfigController::class, 'status']);
+            Route::post('{feePaymentConfig}/copy', [Admin\FeePaymentConfigController::class, 'copy']);
+            Route::delete('{feePaymentConfig}', [Admin\FeePaymentConfigController::class, 'destroy']);
+            Route::get('{feePaymentConfig}/qr', [Admin\FeePaymentConfigController::class, 'qr']);
         });
 
         Route::middleware('permission:settings.manage')->group(function () {

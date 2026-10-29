@@ -41,7 +41,8 @@ export interface Profile {
     documents: StaffDocument[];
     payment: null | {
         method: string | null; utr_number: string | null; bank_name: string | null; status: string; remarks: string | null; exemption_basis: string | null;
-        amount: number; amount_due: number; transaction_date: string | null; verified_at: string | null;
+        amount: number; amount_due: number; transaction_date: string | null; verified_at: string | null; config_version: number | null;
+        paid_to: { account_holder: string | null; bank_name: string | null; ifsc: string | null; account_number_last4: string | null; upi_id: string | null } | null;
         history: { status: string; remarks: string | null; by: string | null; at: string | null }[];
     };
     endorsement: null | { verification_status: string | null; remarks: string | null; verified_by: string | null; verified_at: string | null };

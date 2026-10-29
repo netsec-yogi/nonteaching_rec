@@ -34,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
             'membership' => Models\Membership::class,
             'application_document' => Models\ApplicationDocument::class,
             'payment' => Models\Payment::class,
+            'fee_payment_config' => Models\FeePaymentConfig::class,
             'endorsement' => Models\EmployerEndorsement::class,
             'referee' => Models\Referee::class,
             'referee_invitation' => Models\RefereeInvitation::class,

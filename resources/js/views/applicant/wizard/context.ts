@@ -34,6 +34,7 @@ export const ROW_DOCUMENTS: Partial<Record<StepKey, { type: string; documentable
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
     neft: 'NEFT / RTGS',
+    upi: 'UPI / QR code',
     demand_draft: 'Demand Draft',
     online: 'Online',
 };

@@ -296,7 +296,7 @@ async function onMobileStep(e: Event) {
 
             <div class="row g-3">
                 <!-- Desktop step list -->
-                <aside class="col-lg-3 d-none d-lg-block">
+                <aside class="col-lg-3 col-xxl-2 d-none d-lg-block">
                     <div class="position-sticky" style="top: 1rem">
                         <div class="small text-muted mb-1 d-flex justify-content-between"><span>Progress</span><span>{{ doneCount }} / {{ applicable.length }} complete</span></div>
                         <div class="progress mb-3" style="height: 6px" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100" aria-label="Form completed">
@@ -325,7 +325,7 @@ async function onMobileStep(e: Event) {
                     </div>
                 </aside>
 
-                <section class="col-lg-9 wizard-body">
+                <section class="col-lg-9 col-xxl-10 wizard-body">
                     <!-- Mobile step picker -->
                     <div class="d-lg-none mb-3">
                         <label for="mobile-step" class="form-label small text-muted mb-1">Step {{ currentIndex + 1 }} of {{ steps.length }} · {{ doneCount }} / {{ applicable.length }} complete</label>

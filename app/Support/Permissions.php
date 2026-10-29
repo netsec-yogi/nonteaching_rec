@@ -16,6 +16,7 @@ final class Permissions
         'advertisements.manage' => ['Create and manage advertisements, posts and vacancies', 'configuration', false, []],
         'configuration.manage' => ['Manage checklists, document types, referee and evaluation forms', 'configuration', false, []],
         'templates.manage' => ['Edit email templates', 'configuration', false, []],
+        'payments.configure' => ['Configure application fee bank details and QR codes', 'configuration', true, []],
         'settings.manage' => ['Edit system settings and retention policy', 'configuration', false, []],
         'users.manage' => ['Create users, assign roles, teams and committees', 'administration', true, []],
         'audit.view' => ['View audit logs and access logs', 'administration', true, []],

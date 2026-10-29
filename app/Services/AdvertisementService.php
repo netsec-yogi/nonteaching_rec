@@ -17,7 +17,7 @@ class AdvertisementService
         ['sequence' => 2, 'code' => 'review', 'name' => 'Review by authorised officer', 'role' => Role::RECRUITMENT_ADMIN, 'is_decision_stage' => true, 'allow_same_reviewer' => false],
     ];
 
-    public function __construct(private AuditLogger $audit) {}
+    public function __construct(private AuditLogger $audit, private FeePaymentConfigService $feeConfigs) {}
 
     public function create(array $data, User $actor): Advertisement
     {
@@ -95,6 +95,11 @@ class AdvertisementService
         }
         if (empty($ad->payment_methods)) {
             $problems[] = 'Select at least one accepted payment method.';
+        }
+        $unconfigured = $ad->posts->filter(fn (Post $p) => (float) (($p->fee_schedule ?: $ad->fee_schedule)['default'] ?? 0) > 0
+            && ! $this->feeConfigs->forScope($ad->id, $p->id));
+        if ($unconfigured->isNotEmpty()) {
+            $problems[] = 'Configure and activate the application fee bank details (Administration → Application fee settings) for: '.$unconfigured->pluck('code')->implode(', ').'.';
         }
         if (! $ad->checklistAssignments()->exists()) {
             $problems[] = 'Assign a checklist template to the advertisement or its posts.';

@@ -13,12 +13,12 @@ const ROLES = [
     {
         name: 'super admin', email: 'superadmin@iiitm.ac.in', config: true,
         pages: ['/admin', '/admin/applications', '/admin/applications/{staffApp}', '/scrutiny', '/scrutiny/{staffApp}', '/committee', '/committee/{staffApp}',
-            '/admin/reports', '/admin/logs/audit', '/admin/logs/emails', '/admin/logs/access', '/admin/logs/exports',
+            '/admin/payments', '/admin/fee-settings', '/admin/reports', '/admin/logs/audit', '/admin/logs/emails', '/admin/logs/access', '/admin/logs/exports',
             '/admin/advertisements', '/admin/advertisements/new', '/admin/advertisements/{adminAd}', '/admin/cycles',
             '/admin/checklists', '/admin/checklists/{checklist}', '/admin/document-types', '/admin/forms/referee', '/admin/forms/evaluation',
             '/admin/email-templates', '/admin/settings', '/admin/users', '/admin/permissions', '/account'],
     },
-    { name: 'recruitment admin', email: 'recruitment@iiitm.ac.in', pages: ['/admin', '/admin/applications', '/admin/applications/{staffApp}', '/admin/reports', '/admin/logs/emails'] },
+    { name: 'recruitment admin', email: 'recruitment@iiitm.ac.in', pages: ['/admin', '/admin/applications', '/admin/applications/{staffApp}', '/admin/payments', '/admin/reports', '/admin/logs/emails'] },
     { name: 'scrutiny', email: 'scrutiny1@iiitm.ac.in', pages: ['/admin', '/scrutiny'] },
     { name: 'committee', email: 'committee1@iiitm.ac.in', pages: ['/admin', '/committee'] },
 ];

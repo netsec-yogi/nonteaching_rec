@@ -98,7 +98,7 @@ export const ENDORSEMENT_MODES: Record<string, string> = {
     required_for_in_service: 'Required for in-service candidates',
 };
 
-export const PAYMENT_METHODS: Record<string, string> = { neft: 'NEFT / RTGS', demand_draft: 'Demand Draft', online: 'Online (transaction reference recorded; no gateway)' };
+export const PAYMENT_METHODS: Record<string, string> = { neft: 'NEFT / RTGS', upi: 'UPI / bank QR code', demand_draft: 'Demand Draft', online: 'Online (transaction reference recorded; no gateway)' };
 
 export const FEE_CATEGORIES = ['SC', 'ST', 'PWD', 'FEMALE', 'TRANSGENDER', 'ESM', 'OBC', 'EWS'];
 
@@ -167,4 +167,27 @@ export function cleanFee(fee: FeeSchedule | null): FeeSchedule | null {
         if (k.trim() && v !== '' && v !== null) exemptions[k.trim().toUpperCase()] = Number(v);
     }
     return { default: Number(fee.default), exemptions };
+}
+
+export interface FeeConfigSummary {
+    id: number;
+    advertisement: { id: number; number: string; title: string };
+    post: { id: number; code: string; name: string } | null;
+    label: string | null; bank_name: string | null; account_number_masked: string | null; ifsc: string | null; upi_id: string | null;
+    has_qr: boolean; is_active: boolean; version: number; fee_schedule: FeeSchedule | null; payments_count: number;
+    updated_by: string | null; updated_at: string | null;
+}
+
+export interface FeeConfigDetail extends FeeConfigSummary {
+    account_holder: string | null; branch_name: string | null; account_number: string | null; account_type: string | null;
+    branch_address: string | null; instructions: string | null; reference_instructions: string | null; payment_deadline: string | null;
+    payment_methods: string[];
+    qr: { mime: string; size: number; width: number; height: number; available: boolean } | null;
+    activation_problems: string[]; affected_applications: number;
+    revisions: { version: number; event: string; reason: string | null; by: string | null; at: string | null }[];
+}
+
+export interface FeeConfigAdvertisement {
+    id: number; number: string; title: string; status: string; payment_methods: string[]; fee_schedule: FeeSchedule | null;
+    posts: { id: number; code: string; name: string; fee_schedule: FeeSchedule | null }[];
 }

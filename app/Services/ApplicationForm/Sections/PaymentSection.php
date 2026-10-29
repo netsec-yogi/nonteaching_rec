@@ -4,13 +4,14 @@ namespace App\Services\ApplicationForm\Sections;
 
 use App\Models\Application;
 use App\Services\FeeCalculator;
+use App\Services\FeePaymentConfigService;
 use App\Services\RequirementResolver;
 use Illuminate\Validation\Rule;
 
 /** Section 1 — Details of Demand Draft / NEFT. */
 class PaymentSection extends Section
 {
-    public function __construct(RequirementResolver $requirements, private FeeCalculator $fees)
+    public function __construct(RequirementResolver $requirements, private FeeCalculator $fees, private FeePaymentConfigService $configs)
     {
         parent::__construct($requirements);
     }
@@ -51,14 +52,14 @@ class PaymentSection extends Section
     public function messages(): array
     {
         return [
-            'utr_number.regex' => 'The UTR / DD number should contain 6 to 30 letters and digits only.',
+            'utr_number.regex' => 'The UTR / transaction / DD number should contain 6 to 30 letters and digits only.',
             'amount.min' => 'The amount paid is less than the fee payable (Rs. :min).',
         ];
     }
 
     public function attributes(): array
     {
-        return ['utr_number' => 'NEFT UTR / DD number', 'transaction_date' => 'date of NEFT / DD'];
+        return ['utr_number' => 'UTR / transaction / DD number', 'transaction_date' => 'date of payment'];
     }
 
     public function save(Application $application, array $data): void
@@ -69,13 +70,20 @@ class PaymentSection extends Section
             $application->payment()->updateOrCreate([], [
                 'method' => 'exempt', 'amount' => 0, 'amount_due' => 0, 'utr_number' => null,
                 'transaction_date' => null, 'bank_name' => null, 'exemption_basis' => $fee['basis'],
+                'fee_payment_config_id' => null, 'fee_payment_config_version' => null, 'payment_config_snapshot' => null,
                 'status' => 'exempt',
             ]);
 
             return;
         }
 
+        // Freeze the bank details the candidate was shown, so later edits of the configuration
+        // never change what this payment was made against.
+        $config = $this->configs->forApplication($application);
         $application->payment()->updateOrCreate([], [
+            'fee_payment_config_id' => $config?->id,
+            'fee_payment_config_version' => $config?->version,
+            'payment_config_snapshot' => $config ? $this->configs->snapshot($config) : null,
             'method' => $data['method'],
             'utr_number' => strtoupper($data['utr_number']),
             'transaction_date' => $data['transaction_date'],

@@ -134,6 +134,11 @@ class ApplicationController extends Controller
                 'amount_due' => (float) $application->payment->amount_due,
                 'transaction_date' => $application->payment->transaction_date?->toDateString(),
                 'verified_at' => $application->payment->verified_at?->toIso8601String(),
+                'config_version' => $application->payment->fee_payment_config_version,
+                'paid_to' => ($snap = $application->payment->payment_config_snapshot) ? [
+                    'account_holder' => $snap['account_holder'] ?? null, 'bank_name' => $snap['bank_name'] ?? null, 'ifsc' => $snap['ifsc'] ?? null,
+                    'account_number_last4' => isset($snap['account_number']) ? substr((string) $snap['account_number'], -4) : null, 'upi_id' => $snap['upi_id'] ?? null,
+                ] : null,
                 'history' => $application->payment->verifications->map(fn ($v) => ['status' => $v->status, 'remarks' => $v->remarks, 'by' => $v->verifier?->name, 'at' => $v->created_at?->toIso8601String()]),
             ] : null,
             'endorsement' => $application->endorsement ? [
@@ -208,12 +213,16 @@ class ApplicationController extends Controller
     public function verifyPayment(Request $request, Application $application): JsonResponse
     {
         $this->authorize('verify', $application);
-        $data = $request->validate(['status' => ['required', Rule::in(['verified', 'rejected', 'pending_verification'])], 'remarks' => ['required_if:status,rejected', 'nullable', 'string', 'max:500']]);
+        $data = $request->validate(['status' => ['required', Rule::in(['verified', 'rejected', 'pending_verification'])], 'remarks' => ['required_if:status,rejected', 'nullable', 'string', 'max:500']],
+            ['remarks.required_if' => 'Give the reason for rejecting the payment.']);
         $payment = $application->payment;
         abort_unless($payment && $payment->status !== 'exempt', 422, 'There is no payment to verify.');
+        abort_unless($application->submitted_at, 422, 'The fee can be verified after the application is submitted.');
 
         DB::transaction(function () use ($payment, $data, $request, $application) {
+            $old = $payment->only(['status', 'remarks']);
             $payment->forceFill(['status' => $data['status'], 'remarks' => $data['remarks'] ?? null, 'verified_by' => $request->user()->id, 'verified_at' => now()])->save();
+            $this->audit->record('payment.verification_recorded', $payment, $old, $payment->only(['status', 'remarks']), application: $application);
             $payment->verifications()->create(['status' => $data['status'], 'remarks' => $data['remarks'] ?? null, 'verified_by' => $request->user()->id]);
             $this->status->set($application, 'fee_status', $data['status'], $data['remarks'] ?? null);
         });

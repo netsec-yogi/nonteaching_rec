@@ -1,35 +1,23 @@
 <script setup lang="ts">
 /**
- * Public and applicant pages. A signed-in applicant gets the application shell
- * (same structure as the staff console, with their own menu); visitors and
- * staff browsing public pages get the public top bar.
+ * Public and applicant pages. A signed-in applicant gets ApplicantShell (top navigation);
+ * visitors and staff browsing public pages get the public top bar.
  */
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuth } from '@/stores/auth';
-import AppShell, { type ShellSection } from './AppShell.vue';
+import ApplicantShell from './ApplicantShell.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 
 const auth = useAuth();
 const route = useRoute();
 const asApplicant = computed(() => auth.isApplicant);
-
-const applicantMenu: ShellSection[] = [
-    { items: [
-        { to: '/dashboard', label: 'My applications', icon: 'house', exact: true },
-        { to: '/', label: 'Advertisements', icon: 'megaphone', exact: true },
-    ] },
-    { title: 'Account', items: [
-        { to: '/account', label: 'Account & password', icon: 'key' },
-        { to: '/privacy', label: 'Privacy notice', icon: 'shield-check' },
-    ] },
-];
 </script>
 
 <template>
-    <AppShell v-if="asApplicant" :sections="applicantMenu" app-name="Recruitment Portal" home-to="/dashboard" narrow>
-        <router-view />
-    </AppShell>
+    <ApplicantShell v-if="asApplicant">
+        <div class="applicant-container"><router-view /></div>
+    </ApplicantShell>
 
     <div v-else class="d-flex flex-column min-vh-100">
         <a href="#main" class="visually-hidden-focusable position-fixed top-0 start-0 m-2 btn btn-secondary" style="z-index: 1070">Skip to content</a>

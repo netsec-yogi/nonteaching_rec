@@ -316,6 +316,8 @@ const auditActor = (a: AuditEntry) => a.user?.name ?? a.actor_label ?? humanize(
                                 <tr><th>Amount paid / due</th><td>{{ formatMoney(profile.payment.amount) }} / {{ formatMoney(profile.payment.amount_due) }}
                                     <span v-if="profile.payment.method !== 'exempt' && profile.payment.amount < profile.payment.amount_due" class="badge text-bg-danger ms-1">Short by {{ formatMoney(profile.payment.amount_due - profile.payment.amount) }}</span></td></tr>
                                 <tr><th>Bank</th><td>{{ profile.payment.bank_name ?? '—' }}</td></tr>
+                                <tr v-if="profile.payment.paid_to"><th>Paid to (as shown to the candidate)</th><td>{{ profile.payment.paid_to.account_holder }}, {{ profile.payment.paid_to.bank_name }}
+                                    <div class="small text-muted"><span v-if="profile.payment.paid_to.account_number_last4">A/c ending {{ profile.payment.paid_to.account_number_last4 }} · </span>IFSC {{ profile.payment.paid_to.ifsc ?? '—' }}<span v-if="profile.payment.paid_to.upi_id"> · UPI {{ profile.payment.paid_to.upi_id }}</span> · configuration v{{ profile.payment.config_version }}</div></td></tr>
                                 <tr><th>Verification</th><td><StatusBadge :value="profile.payment.status" /> <span v-if="profile.payment.verified_at" class="small text-muted">{{ formatDateTime(profile.payment.verified_at) }}</span><div v-if="profile.payment.remarks" class="small">{{ profile.payment.remarks }}</div></td></tr>
                             </tbody>
                         </table>

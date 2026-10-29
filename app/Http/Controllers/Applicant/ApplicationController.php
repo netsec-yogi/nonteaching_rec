@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Services\ApplicationForm\ApplicationFormService;
 use App\Services\ApplicationForm\SnapshotBuilder;
 use App\Services\DocumentService;
+use App\Services\FeePaymentConfigService;
 use App\Services\PdfService;
 use App\Services\RefereeService;
 use App\Services\SubmissionService;
@@ -24,6 +25,7 @@ class ApplicationController extends Controller
         private PdfService $pdf,
         private DocumentService $documents,
         private RefereeService $referees,
+        private FeePaymentConfigService $feeConfigs,
     ) {}
 
     public function dashboard(Request $request): JsonResponse
@@ -182,6 +184,16 @@ class ApplicationController extends Controller
         $this->documents->logAccess($request->user(), 'application_pdf', $v->id, $application->id, 'download');
 
         return $this->documents->stream($v->pdf_disk, $v->pdf_path, 'Application-'.str_replace('/', '-', $application->reference_no).'-v'.$v->version.'.pdf', 'application/pdf');
+    }
+
+    /** The bank QR code for this application's fee (view, or ?download=1). */
+    public function feeQr(Request $request, Application $application)
+    {
+        $this->authorize('viewOwn', $application);
+        $config = $this->feeConfigs->qrConfigFor($application);
+        abort_unless($config, 404, 'No QR code is available for this application.');
+
+        return $this->feeConfigs->streamQr($config, $request->user(), $application->id, $request->boolean('download'));
     }
 
     public function receipt(Request $request, Application $application)

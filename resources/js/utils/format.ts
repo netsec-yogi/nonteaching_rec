@@ -52,6 +52,7 @@ export function statusColor(value?: string | null): string {
         expired: 'dark', revoked: 'dark', replaced: 'dark', not_invited: 'secondary', active: 'info',
         published: 'success', suspended: 'warning', closed: 'secondary', archived: 'dark', open: 'success',
         not_verified: 'danger', responded: 'info', resolved: 'success',
+        pending_payment: 'secondary', details_submitted: 'info', not_required: 'light', inactive: 'secondary',
     };
     return map[value ?? ''] ?? 'secondary';
 }

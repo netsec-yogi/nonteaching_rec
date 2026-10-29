@@ -12,6 +12,7 @@ use App\Models\Training;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\FeeCalculator;
+use App\Services\FeePaymentConfigService;
 use App\Services\RequirementResolver;
 use App\Services\SettingsService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -34,6 +35,7 @@ class ApplicationFormService
         private FeeCalculator $fees,
         private SettingsService $settings,
         private AuditLogger $audit,
+        private FeePaymentConfigService $feeConfigs,
     ) {}
 
     public function load(Application $application): Application
@@ -180,6 +182,7 @@ class ApplicationFormService
                 'current_step' => $application->current_step,
                 'email_verified' => $application->user->hasVerifiedEmail(),
                 'fee' => $this->fees->breakdown($application),
+                'fee_payment' => $this->feeConfigs->panelFor($application),
                 'advertisement' => [
                     'id' => $application->advertisement->id,
                     'number' => $application->advertisement->number,

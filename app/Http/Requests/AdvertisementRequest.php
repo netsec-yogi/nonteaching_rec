@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Advertisement;
+use App\Models\Payment;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -46,7 +47,7 @@ class AdvertisementRequest extends FormRequest
             'fee_schedule.exemptions' => ['nullable', 'array'],
             'fee_schedule.exemptions.*' => ['numeric', 'min:0'],
             'payment_methods' => ['required', 'array', 'min:1'],
-            'payment_methods.*' => [Rule::in(['neft', 'demand_draft', 'online'])],
+            'payment_methods.*' => [Rule::in(Payment::PAYABLE_METHODS)],
             'referees_required' => ['required', 'integer', 'between:0,5'],
             'referee_recommendations_mandatory' => ['boolean'],
             'referee_deadline_days' => ['required', 'integer', 'between:1,120'],

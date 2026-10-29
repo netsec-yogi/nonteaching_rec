@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\AdvertisementService;
 use App\Services\ApplicationForm\ApplicationFormService;
 use App\Services\DocumentService;
+use App\Services\FeePaymentConfigService;
 use App\Services\RequirementResolver;
 use Illuminate\Database\Eloquent\Model;
 
@@ -109,6 +110,15 @@ class DemoData
         }
 
         ChecklistTemplate::first()->assignments()->create(['advertisement_id' => $ad->id]);
+        app(FeePaymentConfigService::class)->save([
+            'advertisement_id' => $ad->id, 'post_id' => null, 'label' => 'Recruitment fee account (demo)',
+            'account_holder' => 'ABV-IIITM Gwalior (demo)', 'bank_name' => 'State Bank of India', 'branch_name' => 'IIITM Campus Branch',
+            'account_number' => '00000000000000', 'account_type' => 'savings', 'ifsc' => 'SBIN0000000',
+            'branch_address' => 'Morena Link Road, Gwalior – 474015', 'upi_id' => null,
+            'instructions' => 'Pay the fee by NEFT / RTGS to the account above from any bank. Demo details — do not transfer money.',
+            'reference_instructions' => 'Write your registered email address in the remarks of the transfer, and keep the UTR number.',
+            'is_active' => true,
+        ], null, $super);
         $service->transition($ad, Advertisement::PUBLISHED, $super);
 
         return $ad->fresh();

@@ -12,6 +12,7 @@ const groups = computed<ShellSection[]>(() => [
         { to: '/admin', label: 'Dashboard', icon: 'house', exact: true, show: auth.can('applications.view') || auth.can('reports.view') },
         { to: '/admin/applications', label: 'Applications', icon: 'folder2', show: auth.isStaff },
         { to: '/scrutiny', label: 'My scrutiny queue', icon: 'clipboard-check', show: auth.hasRole('scrutiny_user', 'recruitment_admin', 'super_admin') },
+        { to: '/admin/payments', label: 'Fee verification', icon: 'cash-coin', show: auth.can('applications.verify') },
         { to: '/committee', label: 'Screening Committee', icon: 'people', show: auth.hasRole('committee_member', 'super_admin') },
         { to: '/admin/reports', label: 'Reports & exports', icon: 'bar-chart-line', show: auth.can('reports.view') || auth.can('exports.applications') },
     ] },
@@ -26,6 +27,7 @@ const groups = computed<ShellSection[]>(() => [
         { to: '/admin/settings', label: 'Settings', icon: 'gear', show: auth.can('settings.manage') },
     ] },
     { heading: 'Administration', items: [
+        { to: '/admin/fee-settings', label: 'Application fee settings', icon: 'bank', show: auth.can('payments.configure') },
         { to: '/admin/users', label: 'Users', icon: 'person-badge', show: auth.can('users.manage') },
         { to: '/admin/permissions', label: 'Roles & permissions', icon: 'shield-lock', show: auth.can('users.manage') },
         { to: '/admin/logs/emails', label: 'Email delivery log', icon: 'send-check', show: auth.can('email_logs.view') },
