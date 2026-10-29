@@ -44,9 +44,10 @@ const rowRequirement = computed(() => (rowType.value ? requirement(rowType.value
 </script>
 
 <template>
-    <div v-if="slots.length || rowRequirement" class="card section-card">
+    <div v-if="slots.length || rowRequirement || $slots.intro" class="card section-card">
         <div class="card-header"><i class="bi bi-paperclip me-1"></i>{{ title }}</div>
         <div class="card-body py-2">
+            <slot name="intro" />
             <div v-if="rowRequirement" class="alert py-2 small mb-2" :class="rowRequirement.satisfied ? 'alert-success' : 'alert-warning'">
                 <i class="bi me-1" :class="rowRequirement.satisfied ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i>
                 <strong>{{ rowRequirement.is_mandatory ? 'Required' : 'Optional' }}: {{ rowRequirement.name }}.</strong>
@@ -56,7 +57,7 @@ const rowRequirement = computed(() => (rowType.value ? requirement(rowType.value
             <FileUploader v-for="s in slots" :key="s.type.code" :application-uuid="uuid" :type="s.type"
                 :documents="payload.documents" :required="s.required" :instructions="s.instructions"
                 :single="s.type.code === 'photo'" :disabled="readonly" @changed="setDocuments" />
-            <p v-if="!slots.length && !rowRequirement" class="text-muted small mb-0">No documents for this section.</p>
+            <p v-if="!slots.length && !rowRequirement && !$slots.intro" class="text-muted small mb-0">No documents for this section.</p>
         </div>
     </div>
 </template>

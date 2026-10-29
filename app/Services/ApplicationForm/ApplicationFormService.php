@@ -215,6 +215,7 @@ class ApplicationFormService
                     'instructions' => $application->advertisement->instructions,
                 ],
                 'post' => $application->post->only(['id', 'code', 'name', 'department', 'pay_level', 'pay_scale']),
+                'reference_documents' => config('recruitment.reference_documents'),
             ],
             'steps' => collect($this->sections->all())
                 ->reject(fn ($s) => $s->rejectsWhenNotApplicable() && ! $s->isApplicable($application))

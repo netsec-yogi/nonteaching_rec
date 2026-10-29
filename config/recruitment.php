@@ -8,6 +8,12 @@ return [
     // Item 32 addresses the applicant as Dr/Mr/Mrs/Ms.
     'salutations' => ['Dr', 'Mr', 'Mrs', 'Ms'],
 
+    // Public reference files for applicants (blank formats only — never applicant documents). Paths are
+    // under public/, or full URLs; override per installation without changing code.
+    'reference_documents' => [
+        'endorsement_sample' => env('RECRUITMENT_ENDORSEMENT_SAMPLE_URL', '/reference/Sample_endorsement.pdf'),
+    ],
+
     // Disk for applicant uploads and generated PDFs. Must never be publicly served.
     'documents_disk' => env('RECRUITMENT_DOCUMENTS_DISK', 'private'),
 

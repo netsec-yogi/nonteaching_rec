@@ -228,4 +228,21 @@ class FormOrderFeeAndDocumentRequirementsTest extends TestCase
         $this->postJson("/api/admin/applications/{$app->uuid}/documents/{$doc->uuid}/verify", ['status' => 'verified'])->assertOk();
         $this->assertSame('deficient', $app->fresh()->document_status);
     }
+
+    // ------------------------------------------------------------------ reference documents
+
+    public function test_the_referees_step_links_to_the_public_sample_endorsement_letter(): void
+    {
+        $app = $this->completedDraft();
+        $url = $this->actingAs($app->user)->getJson("/api/applications/{$app->uuid}")->assertOk()->json('application.reference_documents.endorsement_sample');
+
+        $this->assertSame('/reference/Sample_endorsement.pdf', $url);
+        $file = public_path(ltrim($url, '/'));
+        $this->assertFileExists($file);
+        $this->assertStringStartsWith('%PDF-', file_get_contents($file, false, null, 0, 5));
+        // A reference only: nothing is attached to the application.
+        $this->assertFalse($app->documents()->where('original_name', 'like', '%Sample_endorsement%')->exists());
+        // public/ holds only the intended reference file, no applicant documents.
+        $this->assertSame(['Sample_endorsement.pdf'], array_values(array_diff(scandir(public_path('reference')), ['.', '..'])));
+    }
 }

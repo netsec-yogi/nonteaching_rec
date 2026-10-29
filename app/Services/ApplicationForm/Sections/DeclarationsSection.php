@@ -14,7 +14,7 @@ class DeclarationsSection extends Section
         'sec27' => ['Were you at any time declared medically unfit; asked to submit your resignation; discharged or dismissed from Govt./PSU/Autonomous Body or Private Service?', true],
         'sec28' => ['Did you previously apply for any post in this Institute?', true],
         'sec29' => ['Have you routed your application through proper channel?', null],
-        'sec30' => ['Have you enclosed duly certified copies of ACRs/APARs for the last five years?', false],
+        'sec30' => ['Have you enclosed duly certified copies of ACRs/APARs for the last five years (If applicable)?', false],
     ];
 
     public function key(): string

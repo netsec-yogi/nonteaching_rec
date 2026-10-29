@@ -72,7 +72,7 @@ class ReferenceDataSeeder extends Seeder
             ['membership_certificate', 'Professional membership certificate', $pdf, 2048, 'memberships'],
             ['employer_testimonial', 'Testimonial from present / most recent employer', $pdf, 2048, 'referees'],
             ['declaration_details', 'Separate sheet with details (Sections 26–28)', $pdf, 2048, 'declarations'],
-            ['apar_copies', 'Certified copies of ACRs / APARs for the last five years', $pdf, 10240, 'declarations'],
+            ['apar_copies', 'Certified copies of ACRs / APARs for the last five years(If applicable)', $pdf, 10240, 'declarations'],
             ['achievement_document', 'Supporting document for other achievements', $pdf, 4096, 'achievements'],
             ['employer_endorsement', 'Employer endorsement signed and sealed by the forwarding officer', $pdf, 2048, 'endorsement'],
             ['noc', 'No Objection Certificate', $pdf, 2048, 'endorsement'],

@@ -37,6 +37,8 @@ export interface ApplicationMeta {
     fee: { amount: number; basis: string | null };
     /** Bank details to pay the fee to (null when no fee is payable or nothing is configured). */
     fee_payment: FeePaymentPanel | null;
+    /** Public blank formats for applicants (configured in config/recruitment.php). */
+    reference_documents: { endorsement_sample: string | null };
     advertisement: {
         id: number;
         number: string;
