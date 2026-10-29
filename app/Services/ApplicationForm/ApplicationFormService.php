@@ -15,6 +15,7 @@ use App\Services\FeeCalculator;
 use App\Services\RequirementResolver;
 use App\Services\SettingsService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -46,7 +47,8 @@ class ApplicationFormService
         if (! $post->isAcceptingApplications()) {
             throw ValidationException::withMessages(['post_id' => 'This post is not accepting applications.']);
         }
-        if (Application::where('user_id', $user->id)->where('post_id', $post->id)->exists()) {
+        $existing = Application::withTrashed()->where('user_id', $user->id)->where('post_id', $post->id)->first();
+        if ($existing && ! $existing->trashed()) {
             throw ValidationException::withMessages(['post_id' => 'You already have an application for this post.']);
         }
         $openDrafts = Application::where('user_id', $user->id)->where('status', Application::DRAFT)->count();
@@ -54,6 +56,36 @@ class ApplicationFormService
             throw ValidationException::withMessages(['post_id' => 'You have too many applications in progress. Submit or withdraw one first.']);
         }
 
+        // One application per candidate per post is enforced by a unique index that also covers
+        // discarded (soft-deleted) drafts. Applying again brings that draft back instead of failing.
+        if ($existing) {
+            return $this->restoreDiscarded($existing, $post);
+        }
+
+        try {
+            return $this->createFresh($user, $post);
+        } catch (UniqueConstraintViolationException) {
+            // A second request for the same post (double click, two tabs) won the race.
+            throw ValidationException::withMessages(['post_id' => 'You already have an application for this post.']);
+        }
+    }
+
+    private function restoreDiscarded(Application $application, Post $post): Application
+    {
+        if ($application->submitted_at || $application->status !== Application::DRAFT) {
+            throw ValidationException::withMessages(['post_id' => 'You already have an application for this post.']);
+        }
+
+        return DB::transaction(function () use ($application, $post) {
+            $application->restore();
+            $this->audit->record('application.restored', $application, [], ['post' => $post->code]);
+
+            return $application;
+        });
+    }
+
+    private function createFresh(User $user, Post $post): Application
+    {
         return DB::transaction(function () use ($user, $post) {
             $application = Application::create([
                 'user_id' => $user->id,

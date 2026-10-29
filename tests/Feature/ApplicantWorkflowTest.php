@@ -191,6 +191,21 @@ class ApplicantWorkflowTest extends TestCase
         $this->postJson('/api/applications', ['post_id' => $other->id])->assertUnprocessable();
     }
 
+    public function test_applying_again_after_discarding_a_draft_restores_it(): void
+    {
+        $user = $this->applicant('again@example.com');
+        $this->actingAs($user);
+        $uuid = $this->postJson('/api/applications', ['post_id' => $this->post->id])->assertCreated()->json('uuid');
+        $this->deleteJson("/api/applications/{$uuid}")->assertOk();
+        $this->getJson("/api/applications/{$uuid}")->assertNotFound();
+
+        // Previously a 500 (unique index on user + post still held the soft-deleted draft).
+        $this->postJson('/api/applications', ['post_id' => $this->post->id])->assertCreated()->assertJsonPath('uuid', $uuid);
+        $this->getJson("/api/applications/{$uuid}")->assertOk();
+        $this->assertSame(1, Application::withTrashed()->where('user_id', $user->id)->count());
+        $this->postJson('/api/applications', ['post_id' => $this->post->id])->assertUnprocessable()->assertJsonValidationErrors('post_id');
+    }
+
     public function test_submission_after_the_deadline_is_refused(): void
     {
         $application = $this->completedDraft();
