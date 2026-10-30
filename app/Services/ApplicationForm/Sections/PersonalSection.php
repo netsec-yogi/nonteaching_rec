@@ -41,7 +41,7 @@ class PersonalSection extends Section
             'full_name' => ['required', 'string', 'max:200', 'regex:/^[\p{L}\p{M} .\'-]+$/u'],
             'relation_type' => ['required', Rule::in(['father', 'husband'])],
             'relation_name' => ['required', 'string', 'max:200'],
-            'date_of_birth' => ['required', 'date', 'before:-14 years', 'after:-100 years'],
+            'date_of_birth' => ['bail', 'required', 'date', 'before_or_equal:today', 'before:-14 years', 'after:-100 years'],
             'place_of_birth' => ['required', 'string', 'max:150'],
             'mobile' => ['required', 'regex:/^(\+91[- ]?)?[6-9]\d{9}$/'],
             'email' => ['required', 'email:rfc', 'max:255'],
@@ -90,6 +90,7 @@ class PersonalSection extends Section
     {
         return [
             'full_name.regex' => 'Write your name in letters only, as it appears in your certificates.',
+            'date_of_birth.before_or_equal' => 'The date of birth cannot be in the future.',
             'date_of_birth.before' => 'Check the date of birth.',
             'mobile.regex' => 'Enter a valid 10-digit Indian mobile number.',
             'correspondence.pincode.regex' => 'Enter a valid 6-digit PIN code.',
@@ -161,6 +162,9 @@ class PersonalSection extends Section
         $data['permanent_same_as_correspondence'] = (bool) $p?->permanent_same_as_correspondence;
         // The candidate sees their own numbers in full while editing; everyone else sees them masked.
         $data['identity_number_requirement'] = $application->advertisement->identity_number_requirement ?? 'optional';
+        // The SPA shows the age live from the date being typed; the server recalculates it wherever it is recorded.
+        $reference = $application->ageReference();
+        $data['age_reference'] = ['date' => $reference['date']->toDateString(), 'basis' => $reference['basis']];
 
         foreach (['correspondence', 'permanent'] as $type) {
             $address = $application->address($type);

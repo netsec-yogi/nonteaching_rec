@@ -173,6 +173,26 @@ Where to pay is configured under Administration → Application fee settings
   received_verified / received_rejected / awaited), keeping the undertaking and its decision.
   `document_status` becomes `originals_awaited` while accepted undertakings still await originals.
 
+## Age
+
+- Age is derived, never stored or accepted from the browser: the date of birth is the only input.
+  `App\Support\Age::between()` counts completed years and months by calendar arithmetic. N months
+  are complete on the date N calendar months after the birth date; in a month too short for the
+  birth day (the 31st, or 29 February in a common year) they are complete on its last day.
+  `resources/js/utils/age.ts` mirrors it so the Personal step can show the age as the date is typed.
+- `Application::ageReference()` picks the reference date. It is the post's `age_cutoff_date` (the
+  advertisement's age-reckoning date) when set, otherwise the `application_date`. A draft has no
+  application date yet, so it uses today, and submission fixes the date. `Application::age()`
+  returns the age with its reference date and basis.
+- The snapshot's `personal` section records `age`, `age_years`, `age_months`, `age_reference_date`
+  and `age_reference_basis`. The preview, staff views and PDF read them from there. A submitted
+  version keeps the age it was frozen with, even if the reckoning date is edited later; versions
+  frozen before ages were recorded simply omit the row.
+- Display only: no eligibility decision is drawn from it. `ScrutinyService::checkAge` keeps its own
+  reference (`age_cutoff_date`, else the advertisement's closing date) and PHP's `diff()`.
+- A future date of birth is rejected with its own message (`before_or_equal:today`, ahead of the
+  existing 14–100 years range check).
+
 ## Submission
 
 `SubmissionService::submit()` in one transaction, with the application and advertisement

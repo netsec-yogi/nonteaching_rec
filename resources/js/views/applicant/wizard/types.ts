@@ -148,6 +148,8 @@ export interface PersonalData {
     pan_number: string | null;
     aadhaar_number: string | null;
     identity_number_requirement: 'optional' | 'pan' | 'aadhaar' | 'pan_or_aadhaar';
+    /** The date age is reckoned on; the server recalculates the age itself and ignores any sent back. */
+    age_reference: { date: string; basis: 'advertisement' | 'application_date' | 'today' };
     permanent_same_as_correspondence: boolean;
     correspondence: Address;
     permanent: Address;

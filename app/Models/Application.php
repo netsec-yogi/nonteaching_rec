@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\Age;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -262,5 +264,42 @@ class Application extends BaseModel
     public function address(string $type): ?ApplicationAddress
     {
         return $this->addresses->firstWhere('type', $type);
+    }
+
+    /**
+     * The date age is reckoned on: the age-reckoning date the advertisement fixes for the post, otherwise
+     * the application date (today while the application is still a draft).
+     *
+     * @return array{date: CarbonInterface, basis: 'advertisement'|'application_date'|'today'}
+     */
+    public function ageReference(): array
+    {
+        $this->loadMissing('post');
+
+        return match (true) {
+            $this->post?->age_cutoff_date !== null => ['date' => $this->post->age_cutoff_date, 'basis' => 'advertisement'],
+            $this->application_date !== null => ['date' => $this->application_date, 'basis' => 'application_date'],
+            default => ['date' => today(), 'basis' => 'today'],
+        };
+    }
+
+    /**
+     * Age on the reference date, recalculated from the declared date of birth (never from client input).
+     *
+     * @return array{years: int|null, months: int|null, text: string|null, reference_date: string, reference_basis: string}
+     */
+    public function age(): array
+    {
+        $this->loadMissing('personal');
+        $reference = $this->ageReference();
+        $age = Age::between($this->personal?->date_of_birth, $reference['date']);
+
+        return [
+            'years' => $age['years'] ?? null,
+            'months' => $age['months'] ?? null,
+            'text' => $age ? Age::format($age['years'], $age['months']) : null,
+            'reference_date' => $reference['date']->toDateString(),
+            'reference_basis' => $reference['basis'],
+        ];
     }
 }

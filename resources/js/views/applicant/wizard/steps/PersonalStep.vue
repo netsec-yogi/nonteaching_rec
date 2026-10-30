@@ -2,6 +2,7 @@
 /** Sections 5–16 — Personal information and addresses. */
 import { computed, watch } from 'vue';
 import FieldError from '@/components/FieldError.vue';
+import { ageBetween, formatAge, formatDmy, isoToday } from '@/utils/age';
 import { useWizard } from '../context';
 import StepUploads from '../StepUploads.vue';
 import YesNo from '../YesNo.vue';
@@ -44,6 +45,16 @@ const hideUploads = computed(() => [
     ...(props.form.category && props.form.category !== 'UR' ? [] : ['category_certificate']),
 ]);
 const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14); return d.toISOString().slice(0, 10); })();
+
+// Age shown as the date is typed; display only (the server recalculates it on the reference date).
+const today = isoToday();
+const dobInFuture = computed(() => /^\d{4}-\d{2}-\d{2}$/.test(props.form.date_of_birth ?? '') && props.form.date_of_birth! > today);
+const age = computed(() => (dobInFuture.value ? null : ageBetween(props.form.date_of_birth, props.form.age_reference?.date)));
+const ageBasis = computed(() => ({
+    advertisement: 'reckoning date in the advertisement',
+    application_date: 'date of application',
+    today: 'today, until you submit',
+})[props.form.age_reference?.basis ?? 'today']);
 </script>
 
 <template>
@@ -75,17 +86,23 @@ const maxDob = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 14
                         </select>
                         <FieldError :errors="errors" name="relation_type" />
                     </div>
-                    <div class="col-md-8 col-xl-4">
+                    <div class="col-md-8 col-xl-3">
                         <label class="form-label required" for="p-relname">{{ form.relation_type === 'husband' ? "Husband's" : "Father's" }} name</label>
                         <input id="p-relname" v-model="form.relation_name" class="form-control" :class="inv('relation_name')" maxlength="200">
                         <FieldError :errors="errors" name="relation_name" />
                     </div>
                     <div class="col-md-4 col-xl-2">
                         <label class="form-label required" for="p-dob">7. Date of birth</label>
-                        <input id="p-dob" v-model="form.date_of_birth" type="date" class="form-control" :class="inv('date_of_birth')" :max="maxDob">
-                        <FieldError :errors="errors" name="date_of_birth" />
+                        <input id="p-dob" v-model="form.date_of_birth" type="date" class="form-control" :class="{ 'is-invalid': !!errors.date_of_birth || dobInFuture }" :max="maxDob">
+                        <div v-if="dobInFuture" class="invalid-feedback d-block">The date of birth cannot be in the future.</div>
+                        <FieldError v-else :errors="errors" name="date_of_birth" />
                     </div>
-                    <div class="col-md-8 col-xl-4">
+                    <div class="col-md-4 col-xl-2">
+                        <label class="form-label" for="p-age">Age</label>
+                        <input id="p-age" :value="age ? formatAge(age) : ''" class="form-control" readonly aria-describedby="p-age-ref">
+                        <div id="p-age-ref" class="form-text">Age as on: {{ formatDmy(form.age_reference?.date) }} ({{ ageBasis }})</div>
+                    </div>
+                    <div class="col-md-4 col-xl-3">
                         <label class="form-label required" for="p-pob">Place of birth</label>
                         <input id="p-pob" v-model="form.place_of_birth" class="form-control" :class="inv('place_of_birth')" maxlength="150">
                         <FieldError :errors="errors" name="place_of_birth" />

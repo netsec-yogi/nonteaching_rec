@@ -14,6 +14,7 @@ import LoadingState from '@/components/LoadingState.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import ApplicationSnapshot from '@/components/staff/ApplicationSnapshot.vue';
 import DocumentTable from '@/components/staff/DocumentTable.vue';
+import { formatDmy } from '@/utils/age';
 import { formatDate, formatDateTime, formatMoney, humanize } from '@/utils/format';
 import RefereesTab from './parts/RefereesTab.vue';
 import ScrutinyTab from './parts/ScrutinyTab.vue';
@@ -233,6 +234,7 @@ const auditActor = (a: AuditEntry) => a.user?.name ?? a.actor_label ?? humanize(
                                 <tr><th>Email</th><td>{{ personal?.email ?? '—' }} <i v-if="app.candidate_email_verified" class="bi bi-patch-check-fill text-success" title="Email verified"></i><span v-else class="badge text-bg-warning">Unverified</span></td></tr>
                                 <tr><th>Mobile</th><td>{{ personal?.mobile ?? '—' }}</td></tr>
                                 <tr><th>Date of birth</th><td>{{ formatDate(personal?.date_of_birth as string | null) }}</td></tr>
+                                <tr v-if="personal?.age"><th>Age as on {{ formatDmy(personal.age_reference_date as string) }}</th><td>{{ personal.age }}</td></tr>
                                 <tr><th>Category / Gender</th><td>{{ personal?.category ?? '—' }} / {{ humanize(personal?.gender as string | null) }}</td></tr>
                                 <tr><th>PwD / Ex-serviceman</th><td>{{ personal?.is_pwd ?? '—' }} / {{ personal?.is_ex_serviceman ?? '—' }}</td></tr>
                                 <tr><th>In government service</th><td>{{ app.is_in_service ? 'Yes' : 'No' }}</td></tr>

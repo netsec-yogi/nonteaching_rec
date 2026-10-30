@@ -59,6 +59,9 @@
         <tr><td class="n">5.</td><td class="k">Name in Full (in capital letters)</td><td class="v strong">{{ $v($p['full_name']) }}</td></tr>
         <tr><td class="n">6.</td><td class="k">{{ $p['relation_label'] }}</td><td class="v">{{ $v($p['relation_name']) }}</td></tr>
         <tr><td class="n">7.</td><td class="k">Date &amp; Place of Birth</td><td class="v">{{ $d($p['date_of_birth']) }}, {{ $v($p['place_of_birth']) }}</td></tr>
+        @if (! empty($p['age']))
+        <tr><td class="n"></td><td class="k">Age as on {{ \Carbon\Carbon::parse($p['age_reference_date'])->format('d/m/Y') }}</td><td class="v">{{ $p['age'] }}</td></tr>
+        @endif
         <tr><td class="n">8.</td><td class="k">Mobile No. / E-mail Id</td><td class="v">{{ $v($p['mobile']) }} / {{ $v($p['email']) }}</td></tr>
         <tr><td class="n">9.</td><td class="k">Nationality</td><td class="v">{{ $v($p['nationality']) }}</td></tr>
         <tr><td class="n">10.</td><td class="k">Gender</td><td class="v">{{ $v($p['gender']) }}</td></tr>

@@ -31,6 +31,7 @@ class SnapshotBuilder
         $this->form->load($application);
         $a = $application;
         $p = $a->personal;
+        $age = $a->age();
         $yesNo = fn (?bool $v) => $v === null ? '—' : ($v ? 'Yes' : 'No');
 
         return [
@@ -67,6 +68,12 @@ class SnapshotBuilder
                 'relation_label' => $p?->relation_type === 'husband' ? "Husband's Name" : "Father's Name",
                 'relation_name' => $p?->relation_name,
                 'date_of_birth' => $p?->date_of_birth?->toDateString(),
+                // Frozen with the version, so a regenerated PDF keeps the age and the date it was reckoned on.
+                'age' => $age['text'],
+                'age_years' => $age['years'],
+                'age_months' => $age['months'],
+                'age_reference_date' => $age['reference_date'],
+                'age_reference_basis' => $age['reference_basis'],
                 'place_of_birth' => $p?->place_of_birth,
                 'mobile' => $p?->mobile,
                 'email' => $p?->email,

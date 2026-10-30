@@ -5,6 +5,7 @@
  * workspace. Referee recommendations are never part of the snapshot.
  */
 import { computed } from 'vue';
+import { formatDmy } from '@/utils/age';
 import { formatDate, formatDateTime, formatMoney, monthsToText } from '@/utils/format';
 import type { Snapshot } from './types';
 
@@ -44,6 +45,7 @@ const declLabel: Record<string, string> = { sec26a: '26 (a)', sec26b: '26 (b)', 
                         <tr><th>5. Name in full</th><td class="fw-semibold">{{ dash(p.full_name) }}</td></tr>
                         <tr><th>6. {{ p.relation_label }}</th><td>{{ dash(p.relation_name) }}</td></tr>
                         <tr><th>7. Date &amp; place of birth</th><td>{{ formatDate(p.date_of_birth as string) }}, {{ dash(p.place_of_birth) }}</td></tr>
+                        <tr v-if="p.age"><th>Age as on {{ formatDmy(p.age_reference_date as string) }}</th><td>{{ p.age }}</td></tr>
                         <tr><th>8. Mobile / Email</th><td>{{ dash(p.mobile) }} / {{ dash(p.email) }}</td></tr>
                         <tr><th>9–11. Nationality / Gender / Marital status</th><td>{{ dash(p.nationality) }} / {{ dash(p.gender) }} / {{ dash(p.marital_status) }}</td></tr>
                         <tr><th>12. Category</th><td>{{ dash(p.category) }}</td></tr>
