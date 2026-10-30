@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\Pool\MailPool;
 use App\Models\Application;
 use App\Models\AuditLog;
 use App\Models\DocumentAccessLog;
@@ -40,13 +41,30 @@ class LogController extends Controller
     public function emails(Request $request): JsonResponse
     {
         abort_unless($request->user()->hasPermission('email_logs.view'), 403);
-        $f = $request->validate(['status' => ['nullable', 'string', 'max:20'], 'template_key' => ['nullable', 'string', 'max:80'], 'q' => ['nullable', 'string', 'max:100']]);
+        $f = $request->validate([
+            'status' => ['nullable', 'string', 'max:20'], 'template_key' => ['nullable', 'string', 'max:80'], 'q' => ['nullable', 'string', 'max:100'],
+            'mail_account' => ['nullable', 'string', 'max:40'], 'date_from' => ['nullable', 'date'], 'date_to' => ['nullable', 'date'],
+            'failed_attempts' => ['nullable', 'boolean'],
+        ]);
 
-        return response()->json($this->scoped(EmailLog::with('application:id,uuid,reference_no'), $request)
+        return response()->json($this->scoped(EmailLog::with(['application:id,uuid,reference_no', 'sendAttempts']), $request)
             ->when($f['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->when($f['template_key'] ?? null, fn ($q, $k) => $q->where('template_key', $k))
             ->when($f['q'] ?? null, fn ($q, $t) => $q->where('to_email', 'like', '%'.addcslashes($t, '%_\\').'%'))
+            // Any attempt through the account, not only the one that sent it.
+            ->when($f['mail_account'] ?? null, fn ($q, $a) => $q->whereHas('sendAttempts', fn ($x) => $x->where('mail_account', $a)))
+            ->when($f['date_from'] ?? null, fn ($q, $d) => $q->where('created_at', '>=', $d))
+            ->when($f['date_to'] ?? null, fn ($q, $d) => $q->where('created_at', '<=', $d.' 23:59:59'))
+            ->when($f['failed_attempts'] ?? false, fn ($q) => $q->whereHas('sendAttempts', fn ($x) => $x->where('outcome', 'failed')))
             ->orderByDesc('id')->paginate(50));
+    }
+
+    /** Sending accounts with their health and volumes. Server and From address only: never logins or passwords. */
+    public function emailAccounts(Request $request, MailPool $pool): JsonResponse
+    {
+        abort_unless($request->user()->hasPermission('email_logs.view'), 403);
+
+        return response()->json(['enabled' => $pool->enabled(), 'strategy' => $pool->strategy(), 'accounts' => $pool->stats()]);
     }
 
     public function access(Request $request): JsonResponse

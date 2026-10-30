@@ -13,7 +13,8 @@
 | `SESSION_SECURE_COOKIE`, `SESSION_ENCRYPT`, `SESSION_LIFETIME` | Cookie security, idle timeout (minutes) | `true`, `true`, `60` |
 | `SANCTUM_STATEFUL_DOMAINS` | Host(s) serving the SPA | `recruitment.iiitm.ac.in` |
 | `QUEUE_CONNECTION`, `CACHE_STORE`, `REDIS_*` | Queue and cache | `redis` |
-| `MAIL_*` | Institutional SMTP | |
+| `MAIL_*` | Institutional SMTP (the primary sending account) | |
+| `MAIL_POOL_*`, `MAIL_<NAME>_*` | Additional sending accounts and round-robin / failover across them; see `.env.example` and ARCHITECTURE.md, "Outgoing email accounts" | off |
 | `RECRUITMENT_DOCUMENTS_DISK` | Private disk for uploads and PDFs | `private` |
 | `CLAMAV_HOST`, `CLAMAV_PORT`, `CLAMAV_FAIL_CLOSED` | Optional virus scanning of uploads | |
 | `BACKUP_PATH`, `BACKUP_KEEP_DAYS` | Database backup directory and retention | |
@@ -114,6 +115,7 @@ cycle and run the verification above. An untested backup is not a backup.
 | Signal | Where |
 |---|---|
 | Failed emails (incl. referee invitations) | **Administration → Email delivery log**, status *Failed*; dashboard card |
+| Sending accounts | **Email delivery log → Sending accounts**: resting / rate-limited / misconfigured accounts, daily-limit use; `php artisan mail:pool` |
 | Stuck queue | Email log entries remaining *Queued* for more than a few minutes; `supervisorctl status` |
 | Failed jobs | `php artisan queue:failed` (payloads are encrypted) |
 | Application errors | `storage/logs/laravel-*.log` |
@@ -123,8 +125,13 @@ cycle and run the verification above. An untested backup is not a backup.
 Retry failed jobs after fixing the cause (for example SMTP credentials):
 
 ```bash
+php artisan mail:pool --send-test=you@iiitm.ac.in   # prove each account first
+php artisan mail:pool --reset                       # let resting accounts be tried at once
 php artisan queue:retry all
 ```
+
+An email marked *Failed* with "Delivery outcome unknown" may already have been delivered: check
+with the recipient before resending it.
 
 ## Security operations
 

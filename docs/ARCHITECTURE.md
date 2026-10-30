@@ -267,6 +267,76 @@ verification code / completion / delivery failure, clarification request / recei
 assignment / completion, decision, deadline reminder. In-app notices use Laravel database
 notifications (`StaffAlert`, `ApplicantAlert`).
 
+## Outgoing email accounts
+
+Every email goes through one path: `TemplateMailer` writes an `email_logs` row and queues
+`SendTemplatedEmail`, which hands it to `App\Mail\Pool\PooledDelivery`. Controllers and
+templates never choose an account.
+
+- **Accounts** (`MailPool`). The default mailer (`MAIL_*`) is the primary account. With
+  `MAIL_POOL_ENABLED=true`, each account named in `MAIL_POOL_ACCOUNTS` joins it, configured by
+  `MAIL_<NAME>_*` variables (`config/mail.php` → `mail.pool`). Adding one is an environment
+  change only. Each is registered at runtime as a Laravel mailer `pool_<name>` with its own From,
+  so it always sends as itself. Accounts are checked before use, and an account with problems
+  is left out (listed by `php artisan mail:pool` and `recruitment:preflight`). The checks:
+  - host, port, encryption `tls`/`ssl` (`none` only for a local relay or outside production);
+  - login and password present;
+  - From on the login's domain (a different mailbox is flagged as needing a verified send-as);
+  - no login shared with another account.
+
+  Passwords live only in the environment: never in the database, logs or API.
+- **Strategy**:
+  - `single`: the primary only. This is always the case with the pool off, and behaves as
+    before.
+  - `round_robin` (default): each email starts at the next available account. The turn comes
+    from `atomic_counters`: a row-locked increment, so every value goes to exactly one email
+    across workers, servers and processes.
+  - `failover`: the primary first.
+
+  The other available accounts follow as fallbacks.
+- **Stage-aware transport** (`TrackedSmtpTransport`, mail transport `pool_smtp`). It records how
+  far each message got.
+  - A failure before the final "." means the server cannot have the message, so the next
+    account may send it.
+  - No reply after the "." is *ambiguous*: the server may have accepted it. Such an email is
+    marked failed ("delivery outcome unknown") and not resent automatically, to avoid duplicates.
+- **Failure handling** (`SmtpFailure`, by reply code, enhanced status and stage):
+
+  | Failure | Effect on the account | Effect on the email |
+  |---|---|---|
+  | connection, `rate_limited` (4.7.x), `quota` (5.4.5) | cooldown | next account |
+  | `auth`, `config` (TLS), `sender_rejected` | longer cooldown, logged | next account |
+  | `domain_rate_limited` (Gmail 4.7.28) | cools every account on that From domain, so the limit is not evaded | next account on another domain |
+  | `recipient` / `message` refused | none | fails at once |
+  | `deferred` (4xx for the recipient), `other` | none | retried later |
+
+  Cooldowns are `mail.pool.cooldown.*`; they double with each consecutive failure up to the max.
+  `mail_account_health` holds the state and a success resets it. Optional `PER_MINUTE` and
+  `DAILY_LIMIT` per account steer email elsewhere before a server limit is hit.
+- **Retries**. When no account is available, or every tried account failed temporarily, the job
+  is released until an account is free (no attempt is spent) or for the backoff. The job is
+  bounded by `retryUntil()` (`MAIL_POOL_RETRY_FOR_HOURS`). Sending attempts are capped by
+  `MAIL_POOL_MAX_ATTEMPTS`. A claim (`status = processing`) stops two workers sending the same
+  email.
+- **Logging**:
+  - `email_logs` status: queued → processing → sent | retrying | rate_limited | failed.
+    *Sent* means accepted by the mail server, not delivered to the inbox.
+  - `email_logs` also records the account and sender of the latest attempt, the server reply,
+    the job id and the next attempt.
+  - `email_attempts` holds one row per attempt: account, outcome, failure type, SMTP code,
+    redacted reply, job.
+  - `MailSecrets` strips logins and passwords (raw, base64, URL-encoded, AUTH PLAIN) from every
+    stored or logged text.
+  - Retention disposal clears replies along with recipients.
+- **Monitoring**. Administration → Email delivery shows each account with its availability,
+  cooldown reason, 24-hour and all-time sent/failed counts, use of its daily limit (flagged at
+  `MAIL_POOL_WARN_AT_PERCENT`) and last problem. It also lists each email's attempts, filtered
+  by account, status, template, date and failed attempts (`GET admin/logs/email-accounts`,
+  `email_logs.view`).
+- **Proving an account**: `php artisan mail:pool --send-test=you@iiitm.ac.in` sends a real
+  message through every enabled account, even before the pool is switched on. `--reset` clears
+  cooldowns.
+
 ## Reports
 
 `ReportService` defines 20 reports plus the consolidated export (one row per application,

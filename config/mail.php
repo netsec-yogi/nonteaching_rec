@@ -115,4 +115,77 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Outgoing Account Pool
+    |--------------------------------------------------------------------------
+    |
+    | The default mailer above is the primary account. With MAIL_POOL_ENABLED,
+    | the SMTP accounts named in MAIL_POOL_ACCOUNTS (each configured through
+    | MAIL_<NAME>_* variables) join it and App\Mail\Pool\MailPool spreads
+    | outgoing email across the healthy ones. Adding an account needs only
+    | environment variables. Passwords are read here and nowhere else: they
+    | are never stored, logged or returned by the API.
+    |
+    | Strategies: "single" (primary only), "round_robin" (each email to the
+    | next healthy account) and "failover" (primary first, the others only
+    | when it is unavailable). Cooldowns are in seconds and double with each
+    | consecutive failure of an account, up to the maximum.
+    |
+    */
+
+    'pool' => [
+        'enabled' => (bool) env('MAIL_POOL_ENABLED', false),
+        'strategy' => env('MAIL_POOL_STRATEGY', 'round_robin'),
+
+        'primary' => [
+            'label' => env('MAIL_LABEL', 'Primary'),
+            // tls = STARTTLS required, ssl = implicit TLS; unset keeps the mailer's own behaviour.
+            'encryption' => env('MAIL_ENCRYPTION'),
+            'per_minute' => env('MAIL_PER_MINUTE'),
+            'daily_limit' => env('MAIL_DAILY_LIMIT'),
+        ],
+
+        'accounts' => (function () {
+            $accounts = [];
+            foreach (array_filter(array_map('trim', explode(',', (string) env('MAIL_POOL_ACCOUNTS', 'secondary')))) as $name) {
+                $prefix = 'MAIL_'.strtoupper($name).'_';
+                $accounts[strtolower($name)] = [
+                    'enabled' => (bool) env($prefix.'ENABLED', false),
+                    'label' => env($prefix.'LABEL', ucfirst(strtolower($name))),
+                    'host' => env($prefix.'HOST'),
+                    'port' => env($prefix.'PORT', 587),
+                    'username' => env($prefix.'USERNAME'),
+                    'password' => env($prefix.'PASSWORD'),
+                    'encryption' => env($prefix.'ENCRYPTION', 'tls'),
+                    'from' => [
+                        'address' => env($prefix.'FROM_ADDRESS', env($prefix.'USERNAME')),
+                        'name' => env($prefix.'FROM_NAME', env('MAIL_FROM_NAME')),
+                    ],
+                    'timeout' => env($prefix.'TIMEOUT', 15),
+                    'per_minute' => env($prefix.'PER_MINUTE'),
+                    'daily_limit' => env($prefix.'DAILY_LIMIT'),
+                ];
+            }
+
+            return $accounts;
+        })(),
+
+        'cooldown' => [
+            'connection' => (int) env('MAIL_POOL_COOLDOWN_CONNECTION', 60),
+            'rate_limited' => (int) env('MAIL_POOL_COOLDOWN_RATE_LIMITED', 300),
+            'quota' => (int) env('MAIL_POOL_COOLDOWN_QUOTA', 3600),
+            'auth' => (int) env('MAIL_POOL_COOLDOWN_AUTH', 1800),
+            'max' => (int) env('MAIL_POOL_COOLDOWN_MAX', 21600),
+        ],
+
+        // Sending attempts per email, and how long a queued email keeps waiting for an account.
+        'max_attempts' => (int) env('MAIL_POOL_MAX_ATTEMPTS', 5),
+        'retry_for_hours' => (int) env('MAIL_POOL_RETRY_FOR_HOURS', 48),
+        // Seconds before retrying an email no account accepted (by attempt number).
+        'retry_backoff' => [30, 120, 600, 1800, 3600],
+        // The monitoring screen flags an account at this share of its daily limit.
+        'warn_at_percent' => (int) env('MAIL_POOL_WARN_AT_PERCENT', 80),
+    ],
+
 ];

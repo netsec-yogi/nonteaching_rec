@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Mail\Pool\TrackedSmtpTransport;
 use App\Models;
 use App\Services\SettingsService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -65,6 +67,9 @@ class AppServiceProvider extends ServiceProvider
         // and attributes that are not fillable throw instead of being dropped. Production stays lenient.
         Model::preventLazyLoading(! $this->app->isProduction());
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
+
+        // SMTP transport for the outgoing account pool (App\Mail\Pool): notes how far each message got.
+        Mail::extend('pool_smtp', fn (array $config) => TrackedSmtpTransport::fromConfig($config));
 
         if (config('app.force_https')) {
             URL::forceScheme('https');

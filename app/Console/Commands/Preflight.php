@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\Pool\MailPool;
 use App\Models\EmailTemplate;
 use App\Models\Role;
 use App\Models\User;
@@ -37,6 +38,9 @@ class Preflight extends Command
         $check('Email templates seeded', EmailTemplate::count() >= 15, 'php artisan db:seed');
         $check('A Super Administrator exists', User::whereHas('roles', fn ($q) => $q->where('slug', Role::SUPER_ADMIN))->where('is_active', true)->exists());
         $check('Queue is not synchronous', config('queue.default') !== 'sync', 'set QUEUE_CONNECTION=redis or database and run a worker');
+        $misconfigured = collect(app(MailPool::class)->accounts())->filter(fn ($a) => $a->enabled && $a->problems);
+        $check('Outgoing mail accounts are valid', $misconfigured->isEmpty(),
+            $misconfigured->map(fn ($a) => "{$a->name}: ".implode(' ', $a->problems))->implode('; ').' (php artisan mail:pool)');
 
         if ($this->option('production')) {
             $check('APP_ENV=production', app()->environment('production'));

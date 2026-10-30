@@ -129,6 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('reports/{key}/export/{format}', [Admin\ReportController::class, 'export'])->middleware('throttle:exports');
         Route::get('logs/audit', [Admin\LogController::class, 'audit']);
         Route::get('logs/emails', [Admin\LogController::class, 'emails']);
+        Route::get('logs/email-accounts', [Admin\LogController::class, 'emailAccounts']);
         Route::get('logs/access', [Admin\LogController::class, 'access']);
         Route::get('logs/exports', [Admin\LogController::class, 'exports']);
 

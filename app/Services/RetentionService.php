@@ -154,7 +154,9 @@ class RetentionService
                     'pdf_disk' => null, 'pdf_path' => null,
                 ]);
             }
-            DB::table('email_logs')->whereIn('application_id', $ids)->update(['to_email' => self::REDACTED, 'to_name' => null, 'subject' => self::REDACTED]);
+            // Server replies can quote the recipient's address.
+            DB::table('email_attempts')->whereIn('email_log_id', DB::table('email_logs')->whereIn('application_id', $ids)->select('id'))->update(['response' => null]);
+            DB::table('email_logs')->whereIn('application_id', $ids)->update(['to_email' => self::REDACTED, 'to_name' => null, 'subject' => self::REDACTED, 'error' => null, 'smtp_response' => null]);
             // The audit trail keeps who did what and when; the quoted values (names, emails, reasons) go.
             DB::table('audit_logs')->whereIn('application_id', $ids)->update(['old_values' => null, 'new_values' => null, 'meta' => json_encode(['disposed' => true]), 'ip_address' => null, 'user_agent' => null]);
             DB::table('document_access_logs')->whereIn('application_id', $ids)->update(['ip_address' => null]);
