@@ -16,7 +16,8 @@ const ROLES = [
             '/admin/payments', '/admin/fee-settings', '/admin/reports', '/admin/logs/audit', '/admin/logs/emails', '/admin/logs/access', '/admin/logs/exports',
             '/admin/advertisements', '/admin/advertisements/new', '/admin/advertisements/{adminAd}', '/admin/cycles',
             '/admin/checklists', '/admin/checklists/{checklist}', '/admin/document-types', '/admin/forms/referee', '/admin/forms/evaluation',
-            '/admin/email-templates', '/admin/settings', '/admin/users', '/admin/permissions', '/account'],
+            '/admin/email-templates', '/admin/settings', '/admin/users', '/admin/permissions',
+            '/admin/maintenance', '/admin/maintenance/backups', '/admin/maintenance/logs', '/admin/maintenance/logs/view?file={logFile}', '/account'],
     },
     { name: 'recruitment admin', email: 'recruitment@iiitm.ac.in', pages: ['/admin', '/admin/applications', '/admin/applications/{staffApp}', '/admin/payments', '/admin/reports', '/admin/logs/emails'] },
     { name: 'scrutiny', email: 'scrutiny1@iiitm.ac.in', pages: ['/admin', '/scrutiny'] },
@@ -55,6 +56,7 @@ async function resolvePages(page, role) {
     if (role.config) {
         vars.adminAd = pick(await api('/api/admin/advertisements'), ID);
         vars.checklist = pick(await api('/api/admin/checklists'), ID);
+        vars.logFile = pick(await api('/api/admin/maintenance/logs'), /"name":"([A-Za-z0-9._-]+\.log)"/);
     }
     const resolved = pages.map((tpl) => tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? ''));
     const broken = resolved.filter((p) => /\/\/|\/$/.test(p.slice(1)));

@@ -30,7 +30,9 @@ Edit `.env`. With Docker, these values matter in particular:
 | `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `REDIS_PASSWORD` | long random values (`openssl rand -hex 24`) |
 | `QUEUE_CONNECTION`, `CACHE_STORE` | `redis` |
 | `BACKUP_PATH` | `/var/backups/ntrec` (a named volume) |
-| `BACKUP_DUMP_OPTIONS` | `--skip-ssl-verify-server-cert` (the image's MariaDB client and MySQL's self-signed certificate on the internal network) |
+| `BACKUP_DUMP_OPTIONS` | `--skip-ssl-verify-server-cert` (the image's MariaDB client and MySQL's self-signed certificate on the internal network; restores use the same flags unless `BACKUP_RESTORE_OPTIONS` is set) |
+| `BACKUP_ENCRYPTION_KEY` | `base64:` + 32 random bytes (`php -r 'echo "base64:".base64_encode(random_bytes(32)), PHP_EOL;'`). Keep a copy off the server: backups cannot be decrypted without it |
+| `LOG_STACK` | `daily` (or `daily,stderr`), so System maintenance → Application logs has files to show |
 | `MAIL_*` | the institutional SMTP server |
 | `NGINX_SITE` | `https` (certificates below) or `http` behind an institute TLS proxy (then also `TRUSTED_PROXIES` and `FORCE_HTTPS=true`) |
 
@@ -71,7 +73,8 @@ DC="docker compose -f compose.prod.yaml"
 $DC ps                                   # status (web has a health check on /up)
 $DC logs -f app queue                    # logs (PHP errors and Laravel logs go to stderr)
 $DC exec app php artisan queue:failed    # failed jobs; retry with queue:retry all
-$DC exec app php artisan db:backup       # on-demand verified backup (also nightly)
+$DC exec app php artisan db:backup       # on-demand verified, encrypted backup (also scheduled)
+$DC exec app php artisan backup:restore  # list backups; backup:restore <ID> --reason="…" restores one
 $DC exec mysql mysql -uroot -p ntrec     # database shell
 $DC --profile clamav up -d clamav        # enable virus scanning (then CLAMAV_HOST=clamav)
 ```
@@ -81,7 +84,7 @@ $DC --profile clamav up -d clamav        # enable virus scanning (then CLAMAV_HO
 | Volume | Contents | Back up? |
 |---|---|---|
 | `ntrec_storage` | applicant documents, generated PDFs, logs | **yes** (file-level) |
-| `ntrec_backups` | nightly verified database dumps | **yes, copy off-host** |
+| `ntrec_backups` | verified, encrypted database backups | **yes, copy off-host** (or set `BACKUP_COPY_DISK`) |
 | `ntrec_mysql-data` | the live database | via the dumps above |
 | `ntrec_redis-data` | queue and cache | no |
 
@@ -94,11 +97,23 @@ docker run --rm -v ntrec_backups:/b:ro -v ntrec_storage:/s:ro -v /mnt/offsite:/o
 
 ### Restore (Docker)
 
+Use **System maintenance → Database backups → Restore** (it runs on the `queue` container: checks,
+safety backup, maintenance mode, health checks, automatic rollback), or the same from the
+command line:
+
 ```bash
 DC="docker compose -f compose.prod.yaml"
-$DC stop app queue scheduler web
-$DC exec app ls -t /var/backups/ntrec          # pick a dump (or use an off-site copy)
-$DC exec -T app cat /var/backups/ntrec/<file>.sql.gz | gunzip | $DC exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" ntrec'
+$DC exec app php artisan backup:restore                                  # list
+$DC exec app php artisan backup:restore BK-20261104-013000-AB12 --reason="…"
+```
+
+By hand, for example from an off-site copy (encrypted backups need the key in `.env`):
+
+```bash
+$DC exec app php artisan backup:decrypt BK-20261104-013000-AB12 /tmp/restore.sql.gz
+$DC stop queue scheduler web
+$DC exec -T app sh -c 'gunzip -c /tmp/restore.sql.gz' | $DC exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" ntrec'
+$DC exec app sh -c 'rm /tmp/restore.sql.gz && php artisan migrate --force'
 $DC up -d
 ```
 
@@ -268,7 +283,10 @@ Scheduled tasks (`routes/console.php`):
 | `referees:send-reminders` — reminders per each advertisement's schedule | hourly |
 | `advertisements:close-expired` — mark advertisements past their closing time as closed | every 15 min |
 | `applications:deadline-reminders --days=3` — remind candidates with unsubmitted drafts | daily 09:00 |
-| `db:backup --prune` — verified compressed MySQL dump | daily 01:30 |
+| `backup:scheduled` — the database backup on the schedule set under System maintenance (default daily 01:30): compressed, encrypted, verified | checked every minute |
+| `backup:prune` — backup retention (never removes the newest valid backup) | daily 03:15 |
+| `maintenance:sweep` — record backups/restores that stopped making progress as failed | every 5 min |
+| `logs:maintain` — archive old log files, log retention, storage warning | daily 00:20 |
 | `recruitment:retention-review` — archive and flag advertisements past their retention period (deletes nothing) | monthly, 1st 02:00 |
 | `queue:prune-failed --hours=720`, `auth:clear-resets` | daily / 15 min |
 
@@ -281,6 +299,7 @@ composer install --no-dev --optimize-autoloader
 npm ci && npm run build && rm -rf node_modules
 php artisan db:backup                       # always back up before migrating
 php artisan migrate --force
+php artisan backup:import                   # once, after upgrading to the System maintenance release: lists earlier backups
 php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache
 php artisan queue:restart                   # workers pick up the new code
 php artisan up

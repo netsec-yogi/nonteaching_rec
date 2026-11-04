@@ -32,6 +32,7 @@ const groups = computed<ShellSection[]>(() => [
         { to: '/admin/permissions', label: 'Roles & permissions', icon: 'shield-lock', show: auth.can('users.manage') },
         { to: '/admin/logs/emails', label: 'Email delivery log', icon: 'send-check', show: auth.can('email_logs.view') },
         { to: '/admin/logs/audit', label: 'Audit trail', icon: 'journal-text', show: auth.can('audit.view') },
+        { to: '/admin/maintenance', label: 'System maintenance', icon: 'hdd-stack', show: ['backups.manage', 'backups.restore', 'backups.download', 'logs.view'].some((p) => auth.can(p)) },
     ] },
 ].map((g) => ({ title: g.heading, items: g.items.filter((i) => i.show) })).filter((g) => g.items.length));
 

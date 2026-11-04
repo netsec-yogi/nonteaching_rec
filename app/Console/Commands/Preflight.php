@@ -6,6 +6,9 @@ use App\Mail\Pool\MailPool;
 use App\Models\EmailTemplate;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Maintenance\BackupKeys;
+use App\Services\Maintenance\BackupService;
+use App\Services\Maintenance\MySqlTools;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -38,6 +41,14 @@ class Preflight extends Command
         $check('Email templates seeded', EmailTemplate::count() >= 15, 'php artisan db:seed');
         $check('A Super Administrator exists', User::whereHas('roles', fn ($q) => $q->where('slug', Role::SUPER_ADMIN))->where('is_active', true)->exists());
         $check('Queue is not synchronous', config('queue.default') !== 'sync', 'set QUEUE_CONNECTION=redis or database and run a worker');
+        $mysql = app(MySqlTools::class);
+        $check('Backup tools installed (mysqldump, mysql)', $mysql->available('dump') && $mysql->available('mysql'), 'install the MySQL client (default-mysql-client) or set BACKUP_MYSQLDUMP / BACKUP_MYSQL');
+        $check('Backup directory writable and outside public/', rescue(function () {
+            $dir = app(BackupService::class)->directory();
+
+            return is_writable($dir);
+        }, false, false), 'check BACKUP_PATH');
+        $check('Backup encryption key available', ! config('maintenance.backup.encrypt', true) || rescue(fn () => (bool) app(BackupKeys::class)->current(), false, false), 'BACKUP_ENCRYPTION_KEY must be base64: and 32 bytes');
         $misconfigured = collect(app(MailPool::class)->accounts())->filter(fn ($a) => $a->enabled && $a->problems);
         $check('Outgoing mail accounts are valid', $misconfigured->isEmpty(),
             $misconfigured->map(fn ($a) => "{$a->name}: ".implode(' ', $a->problems))->implode('; ').' (php artisan mail:pool)');
@@ -54,7 +65,7 @@ class Preflight extends Command
                 'add '.($port ? "$host:$port" : $host).' to SANCTUM_STATEFUL_DOMAINS (sign-in fails otherwise)');
             $check('Mail is not the log driver', ! in_array(config('mail.default'), ['log', 'array'], true));
             $check('No demo accounts active', ! User::where('email', 'like', '%@example.com')->orWhere('email', 'superadmin@iiitm.ac.in')->where('is_active', true)->exists(), 'deactivate seeded demo users');
-            $check('Backup directory configured', is_dir(config('recruitment.backup.path')) || @mkdir(config('recruitment.backup.path'), 0700, true));
+            $check('Backup directory configured', is_dir(config('maintenance.backup.path')) || @mkdir(config('maintenance.backup.path'), 0700, true));
         }
 
         $failed ? $this->error("$failed check(s) failed.") : $this->info('All checks passed.');

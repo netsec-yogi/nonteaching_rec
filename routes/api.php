@@ -218,5 +218,45 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('settings', [Admin\SettingsController::class, 'index']);
             Route::put('settings', [Admin\SettingsController::class, 'update']);
         });
+
+        // System maintenance: database backups and application logs (Administration → System maintenance).
+        Route::prefix('maintenance')->group(function () {
+            Route::get('overview', [Admin\MaintenanceController::class, 'overview']);
+
+            Route::middleware('permission:backups.manage,backups.restore,backups.download')->group(function () {
+                Route::get('backups', [Admin\BackupController::class, 'index']);
+                Route::get('backups/{backup}', [Admin\BackupController::class, 'show']);
+                Route::get('restores', [Admin\BackupController::class, 'restores']);
+                // Polled while a restore runs; reachable in maintenance mode (bootstrap/app.php).
+                Route::get('restores/{restore}', [Admin\BackupController::class, 'restoreStatus']);
+            });
+            Route::middleware('permission:backups.manage')->group(function () {
+                Route::post('backups', [Admin\BackupController::class, 'store'])->middleware('throttle:maintenance');
+                Route::post('backups/{backup}/verify', [Admin\BackupController::class, 'verify'])->middleware('throttle:maintenance');
+                Route::delete('backups/{backup}', [Admin\BackupController::class, 'destroy']);
+                Route::get('backup-settings', [Admin\BackupController::class, 'settings']);
+                Route::put('backup-settings', [Admin\BackupController::class, 'updateSettings']);
+            });
+            Route::get('backups/{backup}/download', [Admin\BackupController::class, 'download'])->middleware(['permission:backups.download', 'throttle:maintenance']);
+            Route::middleware('permission:backups.restore')->group(function () {
+                Route::get('backups/{backup}/restore-check', [Admin\BackupController::class, 'restoreCheck']);
+                Route::post('backups/{backup}/restore', [Admin\BackupController::class, 'restore'])->middleware('throttle:restore');
+            });
+
+            Route::middleware('permission:logs.view')->group(function () {
+                Route::get('logs', [Admin\LogFileController::class, 'index']);
+                Route::get('logs/entries', [Admin\LogFileController::class, 'entries'])->middleware('throttle:log-viewer');
+            });
+            Route::middleware(['permission:logs.download', 'throttle:maintenance'])->group(function () {
+                Route::get('logs/download', [Admin\LogFileController::class, 'download']);
+                Route::get('logs/download-zip', [Admin\LogFileController::class, 'zip']);
+            });
+            Route::middleware('permission:logs.manage')->group(function () {
+                Route::post('logs/archive', [Admin\LogFileController::class, 'archive'])->middleware('throttle:maintenance');
+                Route::post('logs/delete', [Admin\LogFileController::class, 'destroy'])->middleware('throttle:maintenance');
+                Route::get('log-settings', [Admin\LogFileController::class, 'settings']);
+                Route::put('log-settings', [Admin\LogFileController::class, 'updateSettings']);
+            });
+        });
     });
 });

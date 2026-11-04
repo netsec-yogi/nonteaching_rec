@@ -4,7 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Application;
 use App\Models\AuditLog;
+use App\Models\DatabaseBackup;
+use App\Models\Permission;
 use App\Models\Role;
+use App\Services\Maintenance\BackupService;
+use App\Support\Permissions;
 use Illuminate\Support\Facades\Mail;
 use LogicException;
 use Tests\TestCase;
@@ -189,5 +193,41 @@ class RoleBasedAccessTest extends TestCase
     {
         $this->admin->forceFill(['is_active' => false])->save();
         $this->actingAs($this->admin->fresh())->getJson('/api/admin/applications')->assertUnauthorized();
+    }
+
+    /** Backups and logs: no role holds these permissions by default; only the Super Administrator. */
+    public function test_system_maintenance_is_closed_to_everyone_without_its_permissions(): void
+    {
+        $backup = DatabaseBackup::create(['identifier' => 'BK-20261104-000000-TEST', 'type' => 'manual', 'status' => 'completed', 'filename' => 'ntrec_BK-20261104-000000-TEST.sql.gz.enc']);
+        $get = ['/api/admin/maintenance/overview', '/api/admin/maintenance/backups', '/api/admin/maintenance/restores', '/api/admin/maintenance/backup-settings',
+            '/api/admin/maintenance/logs', '/api/admin/maintenance/logs/entries?file=laravel.log', '/api/admin/maintenance/logs/download?file=laravel.log',
+            '/api/admin/maintenance/log-settings', "/api/admin/maintenance/backups/{$backup->uuid}", "/api/admin/maintenance/backups/{$backup->uuid}/download",
+            "/api/admin/maintenance/backups/{$backup->uuid}/restore-check"];
+        $post = ['/api/admin/maintenance/backups', '/api/admin/maintenance/logs/archive', '/api/admin/maintenance/logs/delete',
+            "/api/admin/maintenance/backups/{$backup->uuid}/restore", "/api/admin/maintenance/backups/{$backup->uuid}/verify"];
+
+        foreach ($get as $url) {
+            $this->getJson($url)->assertUnauthorized();
+        }
+        foreach ([$this->application->user, $this->admin, $this->scrutiny, $this->chair] as $user) {
+            $this->actingAs($user);
+            foreach ($get as $url) {
+                $this->getJson($url)->assertForbidden();
+            }
+            foreach ($post as $url) {
+                $this->postJson($url, [])->assertForbidden();
+            }
+        }
+        foreach (array_keys(Permissions::ALL) as $slug) {
+            if (str_starts_with($slug, 'backups.') || str_starts_with($slug, 'logs.')) {
+                $this->assertSame(0, Permission::where('slug', $slug)->firstOrFail()->roles()->count(), "$slug is granted to no role by default");
+            }
+        }
+        $this->actingAs($this->super)->getJson('/api/admin/maintenance/overview')->assertOk();
+
+        // Backups are written outside the web root and no public URL serves them.
+        $this->assertStringStartsNotWith(realpath(public_path()), (string) realpath(app(BackupService::class)->directory()));
+        $this->assertContains($this->get('/storage/app/backups/'.$backup->filename)->status(), [403, 404]);
+        $this->assertContains($this->get('/storage/backups/'.$backup->filename)->status(), [403, 404]);
     }
 }

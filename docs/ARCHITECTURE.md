@@ -8,7 +8,7 @@ by `routes/web.php` (`resources/views/app.blade.php`); everything else is `/api/
 app/
   Http/Controllers/        thin: authorize → validate → delegate → respond
     Applicant/             wizard, documents, clarification responses
-    Admin/                 staff console (applications, scrutiny, committee, configuration, reports, logs)
+    Admin/                 staff console (applications, scrutiny, committee, configuration, reports, logs, system maintenance)
     RefereeController      token-only referee form
   Http/Requests/           Form Requests for registration, advertisements, posts
   Http/Middleware/         role, permission, active-user, security headers
@@ -17,7 +17,7 @@ app/
   Services/ApplicationForm/Sections/   one class per wizard step
   Models/                  58 Eloquent models
   Jobs/SendTemplatedEmail  queued, encrypted email delivery
-  Console/Commands/        reminders, backups, preflight, admin bootstrap
+  Console/Commands/        reminders, backups and restore, log housekeeping, preflight, admin bootstrap
 resources/js/
   api/ stores/ router/ layouts/ components/ composables/ utils/
   views/public|auth|applicant|referee|admin/…
@@ -339,6 +339,65 @@ templates never choose an account.
 - **Proving an account**: `php artisan mail:pool --send-test=you@iiitm.ac.in` sends a real
   message through every enabled account, even before the pool is switched on. `--reset` clears
   cooldowns.
+
+## System maintenance: database backups and application logs
+
+Administration → System maintenance (`Admin\MaintenanceController`, `BackupController`,
+`LogFileController`; services in `app/Services/Maintenance`). The permissions are `backups.manage`,
+`backups.download`, `backups.restore`, `logs.view`, `logs.download` and `logs.manage`. All are
+sensitive and none is given to any role by default.
+
+- **Catalogue**: `database_backups` (one row per attempt: type, status, file name, size,
+  SHA-256, key id, manifest of server version / tables / migrations, initiator, errors,
+  off-site copy, deletion) and `backup_restores` (checks, safety backup, health, rollback).
+  Both are *operational tables*, together with `sessions`, `cache`, `cache_locks`, `jobs`,
+  `job_batches` and `failed_jobs`. Their rows are not dumped and a restore never touches them,
+  so the catalogue, the record of a restore, signed-in sessions and queued jobs survive restoring
+  an older backup. For that reason they hold no foreign keys to `users`: the initiator is an id
+  plus a name snapshot.
+- **Backup** (`BackupService::run`): `MySqlTools` runs `mysqldump` without a shell, with the
+  credentials in a 0600 option file. Its output goes through `BackupWriter`: gzip, then
+  libsodium secretstream (XChaCha20-Poly1305, 1 MiB authenticated chunks, FINAL tag, key id in
+  the header). The key is `BACKUP_ENCRYPTION_KEY`, or one HKDF-derived from `APP_KEY`, with
+  previous keys found by id. A prelude carries `CREATE TABLE IF NOT EXISTS` for the operational
+  tables. `BackupReader::verify` then rereads the whole file before the backup counts as
+  completed.
+  - A run *claims* its row (queued → running), so a job delivered twice runs once. Progress is
+    a heartbeat.
+  - `MaintenanceOperations` allows one backup or restore at a time (cache lock around
+    check-and-create); an operation without a recent heartbeat no longer blocks.
+  - `BackupSchedule` turns the schedule settings (`settings` rows under `maintenance.`) into
+    slots; the unique `schedule_slot` makes each run once.
+  - Retention never deletes the newest valid backup.
+- **Restore** (`RestoreService`): only catalogued backups.
+  1. Checks: checksum, key, full decryption, engine, server version, and schema (a backup with
+     migrations unknown to this code is refused).
+  2. A safety backup.
+  3. `artisan down`.
+  4. Drop every non-operational table and view, and stream the SQL into the `mysql` client.
+     MariaDB's "sandbox" first line is removed for a MySQL client.
+  5. Migrate.
+  6. Health checks.
+  7. `artisan up`.
+
+  A failure after step 3 loads the safety backup. If that also fails, the portal stays down for
+  the server administrator (`backup:restore` on the command line).
+  `api/admin/maintenance/restores/*` stays reachable in maintenance mode, for the progress dialog.
+- **Logs** (`LogFiles`, `LogReader`, `LogRedactor`): files are addressed by name only, matched
+  against a strict pattern, and must resolve to a regular file directly inside `storage/logs` or
+  `storage/logs/archive` (no paths, no symlinks).
+  - The reader goes backwards from the end in 256 KiB blocks, with a byte budget per request
+    (`next_cursor` continues from where it stopped), so the newest entries come first without
+    reading the whole file.
+  - Entries are Laravel's `[time] env.LEVEL:` lines plus the lines that follow. The exception
+    class and a problem category are derived from the text.
+  - Everything sent to the browser is masked first. Downloads are the original files.
+  - Active files (the current daily or single file, or one written within the hour) cannot be
+    archived or deleted.
+- **Audit**: `backup.requested|completed|failed|downloaded|deleted|cancelled|pruned|verified|
+  imported|restore_requested|restore_denied|restored|restore_failed|settings_updated` and
+  `logs.viewed|downloaded|archived|auto_archived|deleted|pruned|settings_updated`. In-app
+  `StaffAlert`s go to Super Administrators and holders of the relevant permission.
 
 ## Reports
 

@@ -24,6 +24,17 @@ export function formatSize(bytes?: number | null): string {
     return bytes >= 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + ' MB' : Math.round(bytes / 1024) + ' KB';
 }
 
+/** Any byte count, from bytes to GB (formatSize stays for upload limits). */
+export function formatBytes(bytes?: number | null): string {
+    if (bytes === null || bytes === undefined) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let v = bytes / 1024;
+    let i = 0;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v >= 100 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
 export function humanize(value?: string | null): string {
     if (!value) return '—';
     return value.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
@@ -53,6 +64,7 @@ export function statusColor(value?: string | null): string {
         published: 'success', suspended: 'warning', closed: 'secondary', archived: 'dark', open: 'success',
         not_verified: 'danger', responded: 'info', resolved: 'success',
         pending_payment: 'secondary', details_submitted: 'info', not_required: 'light', inactive: 'secondary',
+        running: 'info', deleted: 'dark',
     };
     return map[value ?? ''] ?? 'secondary';
 }

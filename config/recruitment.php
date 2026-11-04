@@ -41,12 +41,4 @@ return [
         'port' => env('CLAMAV_PORT', 3310),
         'fail_closed' => env('CLAMAV_FAIL_CLOSED', true),
     ],
-
-    'backup' => [
-        'path' => env('BACKUP_PATH', storage_path('app/backups')),
-        'keep_days' => env('BACKUP_KEEP_DAYS', 30),
-        // Extra mysqldump flags, e.g. --ssl-mode=REQUIRED (MySQL client) or
-        // --skip-ssl-verify-server-cert (MariaDB client against a self-signed server).
-        'dump_options' => env('BACKUP_DUMP_OPTIONS', ''),
-    ],
 ];

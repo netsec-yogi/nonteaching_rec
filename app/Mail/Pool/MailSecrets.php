@@ -40,10 +40,16 @@ final class MailSecrets
         if ($text === null || $text === '') {
             return $text;
         }
-        $text = strtr($text, $this->replacements);
-        $text = preg_replace('/\bAUTH\s+(PLAIN|LOGIN|XOAUTH2|CRAM-MD5)\s+\S+/i', 'AUTH $1 [redacted]', $text);
-        $text = trim(preg_replace('/\s+/', ' ', $text));
+        $text = trim(preg_replace('/\s+/', ' ', $this->strip($text)));
 
         return mb_strlen($text) > $limit ? mb_substr($text, 0, $limit - 1).'…' : $text;
+    }
+
+    /** Remove the secrets, keeping the text's layout and length (for log viewing). */
+    public function strip(string $text): string
+    {
+        $text = strtr($text, $this->replacements);
+
+        return preg_replace('/\bAUTH\s+(PLAIN|LOGIN|XOAUTH2|CRAM-MD5)\s+\S+/i', 'AUTH $1 [redacted]', $text);
     }
 }

@@ -45,5 +45,13 @@ final class Permissions
         'reports.view' => ['View recruitment reports', 'reports', false, [Role::RECRUITMENT_ADMIN]],
         'exports.applications' => ['Export consolidated application data', 'reports', true, [Role::RECRUITMENT_ADMIN]],
         'exports.referee_content' => ['Export confidential referee recommendation content', 'reports', true, []],
+
+        // System maintenance (Administration → System maintenance). No role holds these by default.
+        'backups.manage' => ['View and create database backups, delete old ones and set the backup schedule and retention', 'maintenance', true, []],
+        'backups.download' => ['Download database backups (a complete copy of all portal data)', 'maintenance', true, []],
+        'backups.restore' => ['Restore the database from a backup (replaces all current data)', 'maintenance', true, []],
+        'logs.view' => ['View application (Laravel) logs, with secrets masked', 'maintenance', true, []],
+        'logs.download' => ['Download original application log files', 'maintenance', true, []],
+        'logs.manage' => ['Archive and delete application log files and set log retention', 'maintenance', true, []],
     ];
 }

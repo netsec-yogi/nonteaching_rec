@@ -2,75 +2,84 @@
 
 namespace App\Console\Commands;
 
+use App\Models\DatabaseBackup;
+use App\Services\Maintenance\BackupKeys;
+use App\Services\Maintenance\BackupReader;
+use App\Services\Maintenance\BackupService;
+use App\Services\Maintenance\BackupWriter;
+use App\Services\Maintenance\MySqlTools;
+use App\Services\Maintenance\OperationInProgress;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use Symfony\Component\Process\Process;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 /**
- * mysqldump → gzip, then a verification pass that the archive is complete
- * (decompresses cleanly and ends with mysqldump's completion marker).
+ * An on-demand backup from the command line (deploy scripts run it before migrating). It goes
+ * through the same path as the portal's backups: mysqldump → gzip → encryption → verification,
+ * catalogued under System maintenance. Before the catalogue table exists (the deploy that
+ * introduces it) the file is still written and verified; `backup:import` catalogues it later.
  * Documents on the private disk are backed up separately (see docs/OPERATIONS.md).
  */
 class BackupDatabase extends Command
 {
-    protected $signature = 'db:backup {--prune : Delete backups older than BACKUP_KEEP_DAYS}';
+    protected $signature = 'db:backup {--prune : Apply the backup retention policy afterwards} {--note= : A note stored with the backup}';
 
-    protected $description = 'Take a verified, compressed MySQL backup';
+    protected $description = 'Take a verified, compressed and encrypted MySQL backup';
 
-    public function handle(): int
+    public function handle(BackupService $backups, MySqlTools $mysql, BackupKeys $keys): int
     {
-        $c = config('database.connections.'.config('database.default'));
-        if (($c['driver'] ?? null) !== 'mysql') {
-            $this->error('Backups are implemented for MySQL only.');
+        if (! Schema::hasTable('database_backups')) {
+            return $this->uncatalogued($backups, $mysql, $keys);
+        }
+
+        try {
+            $backup = $backups->request('command', null, $this->option('note') ?: null);
+        } catch (OperationInProgress $e) {
+            $this->error($e->getMessage());
 
             return self::FAILURE;
         }
+        $backup = $backups->run($backup);
 
-        $dir = config('recruitment.backup.path');
-        File::ensureDirectoryExists($dir, 0700);
-        $file = $dir.'/'.$c['database'].'-'.now()->format('Ymd-His').'.sql.gz';
-
-        $cnf = tempnam(sys_get_temp_dir(), 'mycnf');
-        file_put_contents($cnf, "[client]\nuser=\"{$c['username']}\"\npassword=\"{$c['password']}\"\nhost=\"{$c['host']}\"\nport={$c['port']}\n");
-        chmod($cnf, 0600);
-
-        // pipefail: a failing mysqldump must fail the command, not just produce an empty archive.
-        $dump = Process::fromShellCommandline(sprintf(
-            'bash -o pipefail -c %s',
-            escapeshellarg(sprintf(
-                'mysqldump --defaults-extra-file=%s --single-transaction --quick --routines --triggers --no-tablespaces %s %s | gzip -9 > %s',
-                escapeshellarg($cnf), config('recruitment.backup.dump_options'), escapeshellarg($c['database']), escapeshellarg($file)
-            ))
-        ))->setTimeout(3600);
-        $dump->run();
-        @unlink($cnf);
-
-        if (! $dump->isSuccessful()) {
-            @unlink($file);
-            $this->error('Backup failed: '.trim($dump->getErrorOutput()));
+        if ($backup->status !== DatabaseBackup::COMPLETED) {
+            $this->error("Backup {$backup->identifier} failed: {$backup->error}");
 
             return self::FAILURE;
         }
-
-        $verify = Process::fromShellCommandline('gzip -t '.escapeshellarg($file).' && zcat '.escapeshellarg($file).' | tail -n 1');
-        $verify->run();
-        if (! $verify->isSuccessful() || ! str_contains($verify->getOutput(), 'Dump completed')) {
-            $this->error('Backup written but failed verification: '.$file);
-
-            return self::FAILURE;
+        $this->info("Backup verified: {$backup->identifier}  {$backup->filename}  (".BackupService::bytes($backup->size_bytes).", SHA-256 {$backup->checksum_sha256})");
+        if ($backup->copy_status === 'failed') {
+            $this->warn('The off-site copy failed: '.$backup->copy_error);
         }
-        chmod($file, 0600);
-        $this->info('Backup verified: '.$file.' ('.round(filesize($file) / 1024).' KB)');
 
         if ($this->option('prune')) {
-            $cutoff = now()->subDays((int) config('recruitment.backup.keep_days'))->getTimestamp();
-            foreach (File::glob($dir.'/*.sql.gz') as $old) {
-                if (filemtime($old) < $cutoff) {
-                    File::delete($old);
-                    $this->line('Pruned '.basename($old));
-                }
+            foreach ($backups->prune() as $identifier) {
+                $this->line("Pruned $identifier");
             }
         }
+
+        return self::SUCCESS;
+    }
+
+    private function uncatalogued(BackupService $backups, MySqlTools $mysql, BackupKeys $keys): int
+    {
+        $this->warn('The backup catalogue table does not exist yet (run the migrations); writing the file only.');
+        $writer = null;
+        try {
+            $encrypt = (bool) config('maintenance.backup.encrypt', true);
+            [$key, $keyId] = $encrypt ? $keys->current() : [null, null];
+            $identifier = 'BK-'.now()->format('Ymd-His').'-CLI0';
+            $path = $backups->directory().'/'.preg_replace('/[^A-Za-z0-9_-]/', '_', $mysql->database()).'_'.$identifier.'.sql.gz'.($encrypt ? '.enc' : '');
+            $writer = new BackupWriter($path, $key, $keyId);
+            $manifest = ['identifier' => $identifier, 'database' => $mysql->database(), 'server_version' => $mysql->serverVersion(), 'created_at' => now()->toIso8601String(), 'operational_tables' => []];
+            $result = $backups->dumpInto($writer, $manifest, fn () => null);
+            BackupReader::verify($path, $result['sha256'], $keys);
+        } catch (Throwable $e) {
+            $writer?->abort();
+            $this->error('Backup failed: '.$backups->clean($e->getMessage()));
+
+            return self::FAILURE;
+        }
+        $this->info('Backup verified: '.basename($path).' ('.BackupService::bytes($result['size']).'). Run php artisan backup:import after migrating to list it in the portal.');
 
         return self::SUCCESS;
     }

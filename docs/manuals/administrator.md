@@ -23,7 +23,7 @@ What you can do depends on the permissions given to your role on **Roles & permi
 
 ### Menu (left sidebar)
 
-**Dashboard**, **Applications**, **My scrutiny queue**, **Screening Committee**, **Reports & exports**; configuration items **Advertisements**, **Recruitment cycles**, **Checklists**, **Document types**, **Referee form**, **Committee form**, **Email templates**, **Settings**; administration items **Users**, **Roles & permissions**, **Email delivery log**, **Audit trail**. You see only the items your permissions allow.
+**Dashboard**, **Applications**, **My scrutiny queue**, **Screening Committee**, **Reports & exports**; configuration items **Advertisements**, **Recruitment cycles**, **Checklists**, **Document types**, **Referee form**, **Committee form**, **Email templates**, **Settings**; administration items **Users**, **Roles & permissions**, **Email delivery log**, **Audit trail**, **System maintenance**. You see only the items your permissions allow.
 
 ## 2. The process at a glance
 
@@ -299,6 +299,27 @@ Choose a report: **Summary reports** (totals by advertisement, post, category, g
 
 **Audit trail** (sensitive) has four views: **Audit trail** (every significant action, with actor, record, address and before/after values; filter by action, actor type User / Referee / System and dates), **Email delivery**, **Document access** (every view or download of documents, application PDFs, receipts, scrutiny reports and referee recommendations), and **Exports**. Each application also has its own **History** and **Audit** tabs.
 
+### 6.4 System maintenance: database backups
+
+**System maintenance → Database backups** (permission *View and create database backups…*; no role has it by default, the Super Administrator always does).
+
+- **Create database backup** takes a complete copy of the database in the background. It is compressed, encrypted and checked before it counts as *Completed*, and you get a notification when it finishes. You can add a note such as "Before closing advertisement 03/2026".
+- **Schedule and retention → Change**: automatic backups daily, weekly or monthly at a set time, and how long to keep them (days and/or a maximum number). The most recent good backup is never deleted by these rules. Scheduled backups run even when nobody is signed in.
+- The list can be filtered by type, status, who made it and date, and sorted by clicking a column heading. **Details** shows the checksum and what the backup contains; **Verify integrity** re-reads it completely.
+- **Download** (separate permission) gives the encrypted file. The server administrator can decrypt it with `php artisan backup:decrypt`.
+- **Delete** asks for confirmation. A backup that is still running, or that is being used by a restore, cannot be deleted.
+- **Restore** (separate permission, the most sensitive in the portal) replaces *all* current data with the backup's. The dialog shows the checks, and asks for a reason, the backup ID typed back, your password and an acknowledgement. A safety backup of the current data is taken first. The portal is offline while the data is replaced, and it is rolled back to the safety backup automatically if anything fails. Every restore is listed under **Restore history**.
+- Uploaded documents are not part of the database backup; the server administrator backs them up separately.
+
+### 6.5 System maintenance: application logs
+
+**System maintenance → Application logs** (permission *View application (Laravel) logs*).
+
+- The list shows each log file with its date, size and whether it is **Active** (being written to). The overview counts today's errors and critical errors and groups them by kind: database connection, SQL, email/SMTP, queue jobs, sign-in, permissions, files.
+- **View** opens the newest entries first. Filter by level (or **Errors and above**), keyword, exception class, kind of problem and time, and press **Load older entries** to go further back. **Details** shows the stack trace. Passwords, keys, tokens and Aadhaar/PAN numbers are masked.
+- **Download** (separate permission) gives the original file, or several files as one ZIP.
+- **Archive** compresses a file into *Archived logs*; **Delete** removes it after confirmation (separate permission). Active files cannot be archived or deleted. **Archival and retention** sets nightly archiving, how long archives are kept, and the storage size at which administrators are warned.
+
 ---
 
 ## 7. Status glossary (staff view)
@@ -342,3 +363,7 @@ Choose a report: **Summary reports** (totals by advertisement, post, category, g
 **I cannot see an application.** Recruitment Administrators see only advertisements they are assigned to on the **People** tab.
 
 **A candidate needs to correct a submitted application.** Use **Reopen for correction**; it is the only way to change submitted data.
+
+**A backup failed.** Open **System maintenance → Database backups**, filter by *Failed*, and read the error on the row (for example the database could not be reached or the disk is full). Fix the cause, then **Create database backup**.
+
+**The portal shows "Service Unavailable" after a restore.** The restore and its automatic rollback both failed, so the portal was kept offline on purpose. The server administrator restores the safety backup from the command line (see the Operations guide, "Restore the database").

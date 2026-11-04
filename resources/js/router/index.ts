@@ -11,7 +11,7 @@ declare module 'vue-router' {
         auth?: boolean;           // any signed-in user
         applicant?: boolean;      // applicant role
         staff?: boolean;          // any staff role
-        permission?: string;      // staff permission required
+        permission?: string | string[];   // staff permission required (any one of a list)
         title?: string;
     }
 }
@@ -78,6 +78,11 @@ const routes: RouteRecordRaw[] = [
             { path: 'admin/settings', component: () => import('@/views/admin/config/Settings.vue'), meta: { staff: true, permission: 'settings.manage' } },
             { path: 'admin/users', component: () => import('@/views/admin/config/Users.vue'), meta: { staff: true, permission: 'users.manage' } },
             { path: 'admin/permissions', component: () => import('@/views/admin/config/Permissions.vue'), meta: { staff: true, permission: 'users.manage' } },
+            { path: 'admin/maintenance', component: () => import('@/views/admin/maintenance/Overview.vue'), meta: { staff: true, permission: ['backups.manage', 'backups.restore', 'backups.download', 'logs.view'], title: 'System maintenance' } },
+            { path: 'admin/maintenance/backups', component: () => import('@/views/admin/maintenance/Backups.vue'), meta: { staff: true, permission: ['backups.manage', 'backups.restore', 'backups.download'], title: 'Database backups' } },
+            { path: 'admin/maintenance/logs', component: () => import('@/views/admin/maintenance/Logs.vue'), meta: { staff: true, permission: 'logs.view', title: 'Application logs' } },
+            // The file is a query parameter, not a path segment: some web servers refuse URLs ending in ".log".
+            { path: 'admin/maintenance/logs/view', component: () => import('@/views/admin/maintenance/LogViewer.vue'), props: (r) => ({ file: typeof r.query.file === 'string' ? r.query.file : '' }), meta: { staff: true, permission: 'logs.view', title: 'Log viewer' } },
         ],
     },
     { path: '/:pathMatch(.*)*', component: PublicLayout, children: [{ path: '', component: () => import('@/views/common/NotFound.vue') }] },
@@ -98,7 +103,8 @@ router.beforeEach((to) => {
     if ((needs.auth || needs.applicant || needs.staff) && !signedIn) return { path: '/login', query: { redirect: to.fullPath } };
     if (needs.applicant && !auth.isApplicant) return auth.homeRoute();
     if (needs.staff && !auth.isStaff) return '/dashboard';
-    if (typeof needs.permission === 'string' && !auth.can(needs.permission)) return auth.homeRoute();
+    const permission = needs.permission as string | string[] | undefined;
+    if (permission && !(Array.isArray(permission) ? permission.some((p) => auth.can(p)) : auth.can(permission))) return auth.homeRoute();
     return true;
 });
 

@@ -61,6 +61,8 @@ class AppServiceProvider extends ServiceProvider
             'scrutiny_team' => Models\ScrutinyTeam::class,
             'role' => Models\Role::class,
             'setting' => Models\Setting::class,
+            'database_backup' => Models\DatabaseBackup::class,
+            'backup_restore' => Models\BackupRestore::class,
         ]);
 
         // Outside production, lazy loading a relation throws instead of silently running N+1 queries,
@@ -86,5 +88,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('uploads', fn (Request $r) => Limit::perMinute(30)->by($r->user()?->id ?: $r->ip()));
         RateLimiter::for('submit', fn (Request $r) => Limit::perMinute(5)->by($r->user()?->id ?: $r->ip()));
         RateLimiter::for('exports', fn (Request $r) => Limit::perMinute(10)->by($r->user()?->id ?: $r->ip()));
+        RateLimiter::for('maintenance', fn (Request $r) => Limit::perMinute(20)->by($r->user()?->id ?: $r->ip()));
+        RateLimiter::for('log-viewer', fn (Request $r) => Limit::perMinute(60)->by($r->user()?->id ?: $r->ip()));
+        // Restoring re-checks the administrator's password: few attempts.
+        RateLimiter::for('restore', fn (Request $r) => Limit::perMinutes(10, 5)->by($r->user()?->id ?: $r->ip()));
     }
 }
