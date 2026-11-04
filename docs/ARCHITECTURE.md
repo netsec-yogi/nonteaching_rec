@@ -197,7 +197,10 @@ Where to pay is configured under Administration → Application fee settings
 
 `SubmissionService::submit()` in one transaction, with the application and advertisement
 rows locked: re-checks every section's issues, the deadline (unless reopened) and email
-verification; assigns `{prefix}/{sequence}` from the advertisement's counter; sets statuses
+verification; assigns `{prefix}/{sequence}` from the advertisement's counter, skipping any
+number already issued under that prefix (reference numbers are unique across all applications;
+the prefix is unique per advertisement, and a locking read on the prefix's range stops two
+advertisements that already share one from issuing the same number); sets statuses
 (scrutiny `submitted`, fee `pending_verification`/`exempt`, endorsement); freezes documents;
 writes the version snapshot; creates referee invitations. After commit it renders the PDF,
 emails the confirmation with the PDF attached and notifies staff.

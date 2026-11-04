@@ -41,7 +41,8 @@ class AdvertisementRequest extends FormRequest
             'payment_instructions' => ['nullable', 'string', 'max:20000'],
             'opens_at' => ['required', 'date'],
             'closes_at' => ['required', 'date', 'after:opens_at'],
-            'reference_prefix' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9\/-]+$/'],
+            // Reference numbers are unique across advertisements, so each needs its own prefix.
+            'reference_prefix' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9\/-]+$/', Rule::unique('advertisements', 'reference_prefix')->ignore($id)],
             'fee_schedule' => ['nullable', 'array'],
             'fee_schedule.default' => ['required_with:fee_schedule', 'numeric', 'min:0'],
             'fee_schedule.exemptions' => ['nullable', 'array'],
@@ -67,6 +68,13 @@ class AdvertisementRequest extends FormRequest
             'retention_years' => ['nullable', 'integer', 'between:1,50'],
             'contact_email' => ['nullable', 'email'],
             'contact_phone' => ['nullable', 'string', 'max:30'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'reference_prefix.unique' => 'Another advertisement already uses this reference prefix. Application reference numbers must be unique, so choose a different prefix.',
         ];
     }
 }

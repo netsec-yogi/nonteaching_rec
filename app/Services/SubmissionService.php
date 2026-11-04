@@ -63,8 +63,7 @@ class SubmissionService
             }
 
             if (! $app->reference_no) {
-                $advertisement->increment('reference_sequence');
-                $app->reference_no = sprintf('%s/%05d', $advertisement->reference_prefix, $advertisement->reference_sequence);
+                $app->reference_no = $this->nextReference($advertisement);
             }
 
             $now = now();
@@ -120,6 +119,24 @@ class SubmissionService
         $this->afterSubmission($application, $version);
 
         return $application;
+    }
+
+    /**
+     * The next free reference number under the advertisement's prefix. Numbers are unique across all
+     * applications but the counter is per advertisement, so a number already issued under the same
+     * prefix (by another advertisement using it, or before the counter was reset) is skipped. The
+     * locking read holds that prefix's range of the unique index until commit, so advertisements
+     * sharing a prefix cannot issue the same number at once.
+     */
+    private function nextReference(Advertisement $advertisement): string
+    {
+        $prefix = $advertisement->reference_prefix;
+        $used = (int) Application::withTrashed()->where('reference_no', 'like', addcslashes($prefix, '%_\\').'/%')
+            ->lockForUpdate()->max(DB::raw("CAST(SUBSTRING_INDEX(reference_no, '/', -1) AS UNSIGNED)"));
+        $next = max((int) $advertisement->reference_sequence, $used) + 1;
+        $advertisement->forceFill(['reference_sequence' => $next])->save();
+
+        return sprintf('%s/%05d', $prefix, $next);
     }
 
     private function afterSubmission(Application $application, ApplicationVersion $version): void
